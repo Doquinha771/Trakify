@@ -1,0 +1,11 @@
+{
+  "name": "Trakify",
+  "short_name": "Trakify",
+  "description": "Biblioteca e player de música.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0a0a0b",
+  "theme_color": "#0a0a0b",
+  "orientation": "any"
+}

@@ -17,67 +17,78 @@
               "title": "Good Morning",
               "artist": "IcyCity",
               "start": 0,
-              "driveFile": "1HWfXL3Nk7-8iFfLS3GIj4bWQ1JUH9h9e"
+              "driveFile": "1HWfXL3Nk7-8iFfLS3GIj4bWQ1JUH9h9e",
+              "localFile": "assets/audio/good-morning.mp3"
             },
             {
               "title": "Champion",
               "artist": "IcyCity",
               "start": 259,
-              "driveFile": "1EvY5AkIxCaBCLfCHR7u8G5jpe1DZKFUy"
+              "driveFile": "1EvY5AkIxCaBCLfCHR7u8G5jpe1DZKFUy",
+              "localFile": "assets/audio/champion.mp3"
             },
             {
               "title": "Takin Off",
               "artist": "Juy",
               "start": 427,
-              "driveFile": "12xHt9AMrjRTNCsZZ63BNhFhMwWjxqIdh"
+              "driveFile": "12xHt9AMrjRTNCsZZ63BNhFhMwWjxqIdh",
+              "localFile": "assets/audio/takin-off.mp3"
             },
             {
               "title": "Stronger",
               "artist": "KanD.M.F",
               "start": 629,
-              "driveFile": "1an6ScR_S2SyEz7TUNmbMComNh4XmfeBN"
+              "driveFile": "1an6ScR_S2SyEz7TUNmbMComNh4XmfeBN",
+              "localFile": "assets/audio/stronger.mp3"
             },
             {
               "title": "American Boy",
               "artist": "Kanye Meat Rider",
               "start": 985,
-              "driveFile": "1-W8RlsycUrC4Xl11tUo619cVsDjDYCjU"
+              "driveFile": "1-W8RlsycUrC4Xl11tUo619cVsDjDYCjU",
+              "localFile": "assets/audio/american-boy.mp3"
             },
             {
               "title": "Good Life",
               "artist": "Juy",
               "start": 1427,
-              "driveFile": "15Q16J8skYfbLYM99sYo0UWH9FbswJe47"
+              "driveFile": "15Q16J8skYfbLYM99sYo0UWH9FbswJe47",
+              "localFile": "assets/audio/good-life.mp3"
             },
             {
               "title": "I Wonder",
               "artist": "Mochi&Broccoli",
               "start": 1653,
-              "driveFile": "17n5FKzGz0WmIn_we-l8tP4yBylTWBFQl"
+              "driveFile": "17n5FKzGz0WmIn_we-l8tP4yBylTWBFQl",
+              "localFile": "assets/audio/i-wonder.mp3"
             },
             {
               "title": "Can't Tell Me Nothing",
               "artist": "KanD.M.F",
               "start": 1908,
-              "driveFile": "10_Xc82JPqZ4o0f1FuEUkebMHc8_7ebnl"
+              "driveFile": "10_Xc82JPqZ4o0f1FuEUkebMHc8_7ebnl",
+              "localFile": "assets/audio/can-t-tell-me-nothing.mp3"
             },
             {
               "title": "Ayyy Girl",
               "artist": "Juy",
               "start": 2224,
-              "driveFile": "10kWQeApia7XIRffvkoOEgdrD_XTFCeBZ"
+              "driveFile": "10kWQeApia7XIRffvkoOEgdrD_XTFCeBZ",
+              "localFile": "assets/audio/ayyy-girl.mp3"
             },
             {
               "title": "Building",
               "artist": "Berais",
               "start": 2447,
-              "driveFile": "1WL6umLNvShj7JWnM2EWD-D-UHPoOgvru"
+              "driveFile": "1WL6umLNvShj7JWnM2EWD-D-UHPoOgvru",
+              "localFile": "assets/audio/building.mp3"
             },
             {
               "title": "Barry Bonds",
               "artist": "ahmed 2.0",
               "start": 2603,
-              "driveFile": "10-dQy7UQ_BwP08jMVvBlqpFAs_3dAuq0"
+              "driveFile": "10-dQy7UQ_BwP08jMVvBlqpFAs_3dAuq0",
+              "localFile": "assets/audio/barry-bonds.mp3"
             }
           ]
         },
@@ -89,67 +100,78 @@
               "title": "Bitter Sweet Poetry",
               "artist": "ahmed 2.0",
               "start": 0,
-              "driveFile": "10nIa9JznDNctfMlzYenUCJ_xFPTmCdBz"
+              "driveFile": "10nIa9JznDNctfMlzYenUCJ_xFPTmCdBz",
+              "localFile": "assets/audio/bitter-sweet-poetry.mp3"
             },
             {
               "title": "Drunk and Hot Girls",
               "artist": "IcyCity",
               "start": 239,
-              "driveFile": "1xD364APlqIwZ1SdIWh-21u4bjdiFpfCS"
+              "driveFile": "1xD364APlqIwZ1SdIWh-21u4bjdiFpfCS",
+              "localFile": "assets/audio/drunk-and-hot-girls.mp3"
             },
             {
               "title": "Diamonds",
               "artist": "Juy",
               "start": 525,
-              "driveFile": "1wsvvtJsTUkz-jLYhq0E8u7vHXC2p9Hcb"
+              "driveFile": "1wsvvtJsTUkz-jLYhq0E8u7vHXC2p9Hcb",
+              "localFile": "assets/audio/diamonds.mp3"
             },
             {
               "title": "Passenger",
               "artist": "Kamiien",
               "start": 740,
-              "driveFile": "1LOj1-fJrbEOo23sdBw1oKvHhemdaifPU"
+              "driveFile": "1LOj1-fJrbEOo23sdBw1oKvHhemdaifPU",
+              "localFile": "assets/audio/passenger.mp3"
             },
             {
               "title": "Flashing Lights",
               "artist": "Juy",
               "start": 979,
-              "driveFile": "1ag9_3OEQkaOhkpLBOSn4xg1Cuao7HJQn"
+              "driveFile": "1ag9_3OEQkaOhkpLBOSn4xg1Cuao7HJQn",
+              "localFile": "assets/audio/flashing-lights.mp3"
             },
             {
               "title": "Everything I Am",
               "artist": "ahmed 2.0",
               "start": 1215,
-              "driveFile": "1ZXFdEBOV-sqNfMxznCSmlIZT5lhygwi-"
+              "driveFile": "1ZXFdEBOV-sqNfMxznCSmlIZT5lhygwi-",
+              "localFile": "assets/audio/everything-i-am.mp3"
             },
             {
               "title": "The Glory",
               "artist": "Berais",
               "start": 1510,
-              "driveFile": "146G_LP4awUZnsklOeoXtzuu7NQU1qbcI"
+              "driveFile": "146G_LP4awUZnsklOeoXtzuu7NQU1qbcI",
+              "localFile": "assets/audio/the-glory.mp3"
             },
             {
               "title": "Homecoming",
               "artist": "IcyCity",
               "start": 1669,
-              "driveFile": "1fiHJ7TUzmvQe165hqyadHJqAbrJqz4OG"
+              "driveFile": "1fiHJ7TUzmvQe165hqyadHJqAbrJqz4OG",
+              "localFile": "assets/audio/homecoming.mp3"
             },
             {
               "title": "Big Brother",
               "artist": "Juy",
               "start": 1873,
-              "driveFile": "1uOltb1UQPdGHSsL0jGwaX3-UNuDpyci3"
+              "driveFile": "1uOltb1UQPdGHSsL0jGwaX3-UNuDpyci3",
+              "localFile": "assets/audio/big-brother.mp3"
             },
             {
               "title": "Dream Of Your Love",
               "artist": "Juy",
               "start": 2174,
-              "driveFile": "1WPGkKzwb1XYkEuON6LfyeF4YpZRHBhSG"
+              "driveFile": "1WPGkKzwb1XYkEuON6LfyeF4YpZRHBhSG",
+              "localFile": "assets/audio/dream-of-your-love.mp3"
             },
             {
               "title": "Good Night",
               "artist": "IcyCity",
               "start": 2378,
-              "driveFile": "1j33AAfG-vR-SHuCH-k5LY_nj-Ft7GlCs"
+              "driveFile": "1j33AAfG-vR-SHuCH-k5LY_nj-Ft7GlCs",
+              "localFile": "assets/audio/good-night.mp3"
             }
           ]
         }

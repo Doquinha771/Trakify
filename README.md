@@ -1,53 +1,37 @@
 # Trakify
 
-Player musical mobile-first para GitHub Pages. A versão 1.6 prioriza os arquivos individuais do **Google Drive** e usa a **YouTube IFrame Player API** automaticamente quando o Drive não consegue entregar uma faixa.
+Player musical mobile-first para GitHub Pages.
 
-## Graduation (Ultimate Edition)
+## v1.8 — áudio local e mobile
 
-- Disco 1: `Of7dmQrpoEo`
-- Disco 2: `VLwlI7HSdrY`
-- 22 faixas no total.
-- Capa e banner continuam configurados pelos IDs do Google Drive.
-- Se o Drive não entregar as imagens, o Trakify usa a thumbnail do vídeo do YouTube como fallback.
+Esta versão usa a seguinte ordem de reprodução:
+
+1. **MP3 local em `assets/audio/`** — fonte principal, rápida e estável no GitHub Pages.
+2. **Google Drive** — fallback caso um arquivo local esteja ausente ou falhe.
+3. **YouTube** — mantido apenas como referência dos discos/thumbnails. O player incorporado e o popout foram removidos.
+
+As 22 faixas de **Graduation (Ultimate Edition)** foram compactadas de 192 kbps para 128 kbps, mantendo MP3, estéreo e 44,1 kHz. O conjunto caiu de aproximadamente 128 MiB para cerca de 85 MiB.
+
+## Mobile / segundo plano
+
+O player usa `<audio>` nativo, Media Session API e, quando disponível, Audio Session API em modo `playback`. Isso melhora reprodução com a tela bloqueada, troca de aplicativo, controles da tela de bloqueio e fones de ouvido.
+
+Também foi adicionado `manifest.webmanifest`, suporte a instalação como PWA e um Service Worker para o shell do app.
+
+> Navegadores e sistemas móveis ainda podem interromper qualquer site por economia extrema de bateria, encerramento manual do navegador ou políticas do próprio sistema. O Trakify não pausa a música por conta própria ao perder foco.
+
+## Volume no celular
+
+- Botão de volume no mini-player.
+- Slider de volume dentro do player em tela cheia.
+- Volume salvo no navegador.
+- Toque no botão do mini-player alterna entre mudo e o último volume usado.
+
+Em aparelhos que deixam o volume exclusivamente sob controle físico do sistema, o navegador pode limitar alterações programáticas.
 
 ## Biblioteca
 
-A configuração fica em `data/library.json`:
-
-```json
-{
-  "albums": [
-    {
-      "id": "graduation-ultimate-edition",
-      "title": "Graduation (Ultimate Edition)",
-      "cover": "ID_DA_CAPA_NO_DRIVE",
-      "banner": "ID_DO_BANNER_NO_DRIVE",
-      "discs": [
-        {
-          "title": "Disco 1",
-          "youtube": "Of7dmQrpoEo",
-          "tracks": [
-            { "title": "Good Morning", "artist": "IcyCity", "start": 0 },
-            { "title": "Champion", "artist": "IcyCity", "start": 259 }
-          ]
-        }
-      ]
-    }
-  ]
-}
-```
-
-O fim de uma faixa é calculado automaticamente pelo início da próxima. A última faixa de cada disco usa a duração real informada pelo player do YouTube.
-
-## Reprodução híbrida
-
-O Drive é sempre a fonte principal. Quando o fallback do YouTube é necessário, o vídeo incorporado fica visível:
-
-- no celular, ele aparece no player em tela cheia;
-- no desktop, aparece em um dock acima do player inferior;
-- fechar o player em tela cheia no celular pausa o vídeo.
-
-O app não extrai nem baixa áudio do YouTube: o fallback usa o player oficial.
+A configuração fica em `data/library.json`. Cada faixa possui `localFile` e, opcionalmente, `driveFile` e informação do vídeo de referência.
 
 ## Rodar localmente
 
@@ -57,42 +41,23 @@ python -m http.server 8000
 
 Abra `http://127.0.0.1:8000`.
 
-A biblioteca também está embutida em `data/library.js`, então a interface consegue carregar o catálogo mesmo em ambientes que bloqueiem o `fetch()` local.
-
 ## Validação
 
 ```bash
 python scripts/validate.py
 ```
 
+O validador confere catálogo e presença de todos os MP3 locais.
+
 ## GitHub Pages
 
-1. Faça push dos arquivos.
+1. Envie os arquivos para o repositório.
 2. Abra **Settings → Pages**.
 3. Escolha **Deploy from a branch**.
 4. Selecione `main` e `/ (root)`.
 
-## Ícones
+Nenhum arquivo individual desta versão chega perto do limite de 100 MB do GitHub.
 
-A interface usa **Flaticon UIcons** via CDN. Mantenha a atribuição já presente no projeto conforme os termos aplicáveis ao conjunto de ícones usado.
+## Drive opcional
 
-## Observação
-
-A disponibilidade de reprodução depende de o vídeo permitir incorporação no YouTube. Se um vídeo bloquear embeds, o Trakify mostra um botão para abrir aquela faixa diretamente no YouTube.
-
-
-## v1.6 — Drive First
-
-O catálogo foi embutido no `index.html`, então o álbum não depende de `fetch()` para aparecer. Cada faixa tenta primeiro o arquivo individual do Google Drive. O player testa rotas públicas alternativas do próprio Drive e, se elas forem bloqueadas, expirarem ou demorarem demais, muda automaticamente para o trecho correspondente no YouTube. Foram preservados os 22 IDs já cadastrados.
-
-Para o Drive funcionar, cada arquivo precisa estar em **Qualquer pessoa com o link**, sem exigir login, e permitir download. Arquivos que excederem a cota pública do Google, estiverem bloqueados por política ou usarem um codec incompatível com o navegador cairão no YouTube automaticamente.
-
-## Cache de áudio recomendado
-
-O arquivo `worker/drive-cache-worker.js` contém um Worker pronto para colocar o áudio atrás de cache, aceitar pedidos parciais do player e evitar CORS. Depois de publicar o Worker, copie a URL dele para `driveProxyBase` no fim do `index.html`:
-
-```html
-<script>window.TRAKIFY_CONFIG = { driveProxyBase: "https://SEU-WORKER.workers.dev" };</script>
-```
-
-Ordem de reprodução: **Worker com cache → Drive direto → YouTube**. Configure no Worker a variável `SITE_ORIGIN` com a origem do seu GitHub Pages para restringir o acesso; durante testes, o valor padrão aceita qualquer origem.
+O arquivo `worker/drive-cache-worker.js` continua disponível caso você queira usar um Worker como cache do Drive. Configure `driveProxyBase` no fim do `index.html` se publicar esse Worker.
