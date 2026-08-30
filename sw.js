@@ -1,4 +1,4 @@
-const CACHE = "trakify-shell-v1.8";
+const CACHE = "trakify-shell-v1.9-local";
 const SHELL = [
   "./",
   "./index.html",

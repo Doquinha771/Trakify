@@ -117,11 +117,6 @@ function youtubeThumb(videoId, quality = "hqdefault") {
   return videoId ? `https://i.ytimg.com/vi/${encodeURIComponent(videoId)}/${quality}.jpg` : "";
 }
 
-function youtubeWatchUrl(track) {
-  if (!track?.youtube) return "https://www.youtube.com/";
-  return `https://www.youtube.com/watch?v=${encodeURIComponent(track.youtube)}&t=${Math.max(0, Math.floor(track.start || 0))}s`;
-}
-
 function imageMarkup(primary, fallback, alt = "") {
   const src = primary || fallback;
   if (!src) return "♫";
@@ -564,140 +559,98 @@ function queue() {
 let progressTimer = null;
 let segmentTransitioning = false;
 
-function updateYouTubeLinks(track) {
-  // YouTube remains metadata/reference only. Playback stays in the native <audio>
-  // path so mobile browsers can keep the media session alive in background.
-  return youtubeWatchUrl(track);
-}
+let activeSource = "idle";
+let playbackToken = 0;
+const audioPlayer = document.getElementById("audioPlayer");
 
-let activeSource = "local";
-let driveCandidateIndex = 0;
-let driveToken = 0;
-let driveAttemptTimer = null;
-const driveAudio = document.getElementById("driveAudio");
-
-function driveViewUrl(track) {
-  return track?.driveFile ? `https://drive.google.com/file/d/${encodeURIComponent(track.driveFile)}/view` : "https://drive.google.com/";
-}
-function driveCandidates(track) {
-  if (!track?.driveFile) return [];
-  const id = encodeURIComponent(track.driveFile);
-  const proxy = String(window.TRAKIFY_CONFIG?.driveProxyBase || "").trim().replace(/\/$/, "");
-  return [
-    proxy ? `${proxy}/audio?id=${id}` : "",
-    `https://drive.usercontent.google.com/download?id=${id}&export=download&confirm=t`,
-    `https://drive.usercontent.google.com/uc?id=${id}&export=download&confirm=t`,
-    `https://drive.google.com/uc?export=download&id=${id}&confirm=t`,
-    `https://drive.google.com/uc?export=download&id=${id}`,
-    `https://drive.google.com/uc?id=${id}&export=download`
-  ].filter(Boolean);
-}
-function setActiveSource(source, track = currentTrack()) {
+function setActiveSource(source) {
   activeSource = source;
-  const playable = source === "local" || source === "drive";
   document.body.dataset.audioSource = source;
-  if (playable && "audioSession" in navigator) {
+  if (source === "local" && "audioSession" in navigator) {
     try { navigator.audioSession.type = "playback"; } catch {}
   }
 }
-function stopDrive() {
+
+function resetAudio() {
   setActiveSource("idle");
-  if (driveAttemptTimer) clearTimeout(driveAttemptTimer);
-  driveAttemptTimer = null;
-  if (driveAudio) {
-    try { driveAudio.pause(); } catch {}
-    driveAudio.removeAttribute("src");
-    try { driveAudio.load(); } catch {}
-  }
+  if (!audioPlayer) return;
+  try { audioPlayer.pause(); } catch {}
+  audioPlayer.removeAttribute("src");
+  try { audioPlayer.load(); } catch {}
 }
+
 function playbackUnavailable(track, token, reason = "") {
-  if (token !== driveToken || currentTrack()?.id !== track.id) return;
-  if (driveAttemptTimer) clearTimeout(driveAttemptTimer);
-  driveAttemptTimer = null;
-  console.warn("Fontes de áudio indisponíveis:", reason || "fontes esgotadas");
+  if (token !== playbackToken || currentTrack()?.id !== track.id) return;
+  console.warn("Áudio local indisponível:", reason || track.localFile || "sem arquivo");
+  setActiveSource("idle");
   state.isPlaying = false;
   setPlayingIcons(false);
   updateTrackRows();
   if ("mediaSession" in navigator) navigator.mediaSession.playbackState = "none";
-  showToast("Não foi possível tocar a faixa local nem pelo Drive.");
+  showToast("Não foi possível tocar o arquivo local desta faixa.");
 }
-function tryDrive(track, token) {
-  const urls = driveCandidates(track);
-  if (!driveAudio || token !== driveToken || driveCandidateIndex >= urls.length) {
-    playbackUnavailable(track, token, "todas as URLs do Drive falharam");
+
+function playLocalTrack(track, token) {
+  if (!track?.localFile || !audioPlayer) {
+    playbackUnavailable(track, token, "faixa sem localFile");
     return;
   }
-  if (driveAttemptTimer) clearTimeout(driveAttemptTimer);
-  setActiveSource("drive-loading", track);
-  driveAudio.src = urls[driveCandidateIndex++];
-  const attemptIndex = driveCandidateIndex;
-  driveAudio.load();
-  driveAttemptTimer = setTimeout(() => {
-    if (token === driveToken && activeSource === "drive-loading" && driveCandidateIndex === attemptIndex) tryDrive(track, token);
-  }, 7000);
-  const playPromise = driveAudio.play();
+
+  setActiveSource("local-loading");
+  audioPlayer.src = track.localFile;
+  audioPlayer.load();
+
+  const playPromise = audioPlayer.play();
   if (playPromise?.catch) {
     playPromise.catch(error => {
-      if (token !== driveToken || currentTrack()?.id !== track.id || driveCandidateIndex !== attemptIndex) return;
-      console.warn("Falha em uma rota do Drive:", error?.message || error);
-      tryDrive(track, token);
+      if (token !== playbackToken || currentTrack()?.id !== track.id) return;
+      playbackUnavailable(track, token, error?.message || "falha ao iniciar reprodução");
     });
   }
 }
-function playDriveTrack(track, quiet = false, token = ++driveToken) {
-  if (!track?.driveFile || !driveAudio) {
-    if (!quiet) showToast("Faixa sem arquivo no Drive.");
-    playbackUnavailable(track, token, "faixa sem Drive");
-    return;
-  }
-  driveCandidateIndex = 0;
-  setActiveSource("drive-loading", track);
-  tryDrive(track, token);
-}
-function playLocalTrack(track, token) {
-  if (!track?.localFile || !driveAudio) {
-    if (track?.driveFile) playDriveTrack(track, true, token);
-    else playbackUnavailable(track, token, "faixa sem arquivo local");
-    return;
-  }
 
-  if (driveAttemptTimer) clearTimeout(driveAttemptTimer);
-  setActiveSource("local-loading", track);
-  driveAudio.src = track.localFile;
-  driveAudio.load();
-
-  const fallback = reason => {
-    if (token !== driveToken || currentTrack()?.id !== track.id) return;
-    if (driveAttemptTimer) clearTimeout(driveAttemptTimer);
-    driveAttemptTimer = null;
-    console.warn("Arquivo local indisponível; tentando Drive:", reason || "falha local");
-    if (track.driveFile) playDriveTrack(track, true, token);
-    else playbackUnavailable(track, token, reason);
-  };
-
-  // play() is invoked immediately from the user's tap/click path. This matters
-  // on mobile browsers with strict autoplay/user-activation policies.
-  const playPromise = driveAudio.play();
-  if (playPromise?.catch) playPromise.catch(error => fallback(error?.message));
-  driveAttemptTimer = setTimeout(() => {
-    if (!driveAudio.paused && driveAudio.currentTime > 0) return;
-    fallback("timeout do arquivo local");
-  }, 6000);
-}
-
-if (driveAudio) {
+if (audioPlayer) {
   const saved = Number(localStorage.getItem("trakify:volume"));
-  driveAudio.volume = Number.isFinite(saved) ? Math.max(0,Math.min(1,saved)) : .8;
-  driveAudio.addEventListener("playing", () => { if (driveAttemptTimer) { clearTimeout(driveAttemptTimer); driveAttemptTimer=null; } if (activeSource === "local-loading") activeSource="local"; else if (activeSource === "drive-loading") activeSource="drive"; state.isPlaying=true; setPlayingIcons(true); updateTrackRows(); startProgressTicker(); if ("mediaSession" in navigator) navigator.mediaSession.playbackState="playing"; });
-  driveAudio.addEventListener("pause", () => { if (!["local","drive"].includes(activeSource)) return; state.isPlaying=false; setPlayingIcons(false); updateTrackRows(); if ("mediaSession" in navigator) navigator.mediaSession.playbackState="paused"; });
-  driveAudio.addEventListener("ended", () => { if (!["local","drive"].includes(activeSource)) return; if (state.repeat) { driveAudio.currentTime=0; driveAudio.play().catch(()=>{}); } else step(1); });
-  driveAudio.addEventListener("error", () => { const t=currentTrack(); if (!t) return; if (activeSource==="local" || activeSource==="local-loading") { if (t.driveFile) playDriveTrack(t,true,driveToken); else playbackUnavailable(t,driveToken,"erro no arquivo local"); } else if (activeSource==="drive" || activeSource==="drive-loading") tryDrive(t,driveToken); });
+  audioPlayer.volume = Number.isFinite(saved) ? Math.max(0, Math.min(1, saved)) : .8;
+
+  audioPlayer.addEventListener("playing", () => {
+    if (activeSource === "local-loading") setActiveSource("local");
+    if (activeSource !== "local") return;
+    state.isPlaying = true;
+    setPlayingIcons(true);
+    updateTrackRows();
+    startProgressTicker();
+    if ("mediaSession" in navigator) navigator.mediaSession.playbackState = "playing";
+  });
+
+  audioPlayer.addEventListener("pause", () => {
+    if (activeSource !== "local") return;
+    state.isPlaying = false;
+    setPlayingIcons(false);
+    updateTrackRows();
+    if ("mediaSession" in navigator) navigator.mediaSession.playbackState = "paused";
+  });
+
+  audioPlayer.addEventListener("ended", () => {
+    if (activeSource !== "local") return;
+    if (state.repeat) {
+      audioPlayer.currentTime = 0;
+      audioPlayer.play().catch(() => {});
+    } else {
+      step(1);
+    }
+  });
+
+  audioPlayer.addEventListener("error", () => {
+    const track = currentTrack();
+    if (!track || !["local", "local-loading"].includes(activeSource)) return;
+    playbackUnavailable(track, playbackToken, "erro ao carregar o MP3 local");
+  });
 }
 
 function segmentDuration(track = currentTrack()) {
-  if (!track) return 0;
-  if (["local","drive"].includes(activeSource) && driveAudio && Number.isFinite(driveAudio.duration)) return Math.max(0, driveAudio.duration);
-  return 0;
+  if (!track || !audioPlayer || !["local", "local-loading"].includes(activeSource)) return 0;
+  return Number.isFinite(audioPlayer.duration) ? Math.max(0, audioPlayer.duration) : 0;
 }
 
 function startProgressTicker() {
@@ -707,76 +660,106 @@ function startProgressTicker() {
 
 function updatePlaybackProgress() {
   const track = currentTrack();
-  if (!track) return;
+  if (!track || !audioPlayer || !["local", "local-loading"].includes(activeSource)) return;
+
   const duration = segmentDuration(track);
-  let raw=0, current=0;
-  if (!["local","drive"].includes(activeSource) || !driveAudio) return;
-  raw = Number(driveAudio.currentTime || 0);
-  current = Math.max(0, raw);
-  const progress = duration>0 ? Math.max(0,Math.min(1000,Math.round(current/duration*1000))) : 0;
-  els.currentTime.textContent=fmt(current); els.duration.textContent=duration>0?fmt(duration):(track.duration||"—");
-  els.sheetCurrentTime.textContent=fmt(current); els.sheetDuration.textContent=duration>0?fmt(duration):(track.duration||"—");
-  els.seek.value=progress; els.sheetSeek.value=progress; els.miniProgress.style.width=`${progress/10}%`;
+  const current = Math.max(0, Number(audioPlayer.currentTime || 0));
+  const progress = duration > 0 ? Math.max(0, Math.min(1000, Math.round(current / duration * 1000))) : 0;
+
+  els.currentTime.textContent = fmt(current);
+  els.duration.textContent = duration > 0 ? fmt(duration) : (track.duration || "—");
+  els.sheetCurrentTime.textContent = fmt(current);
+  els.sheetDuration.textContent = duration > 0 ? fmt(duration) : (track.duration || "—");
+  els.seek.value = progress;
+  els.sheetSeek.value = progress;
+  els.miniProgress.style.width = `${progress / 10}%`;
+
   if ("mediaSession" in navigator && duration > 0 && Number.isFinite(current)) {
-    try { navigator.mediaSession.setPositionState({ duration, playbackRate: driveAudio?.playbackRate || 1, position: Math.min(duration, current) }); } catch {}
+    try {
+      navigator.mediaSession.setPositionState({
+        duration,
+        playbackRate: audioPlayer.playbackRate || 1,
+        position: Math.min(duration, current)
+      });
+    } catch {}
   }
 }
 
 function handleSegmentEnd() {
-  if (state.repeat && driveAudio) {
-    driveAudio.currentTime = 0;
-    driveAudio.play().catch(() => {});
+  if (state.repeat && audioPlayer) {
+    audioPlayer.currentTime = 0;
+    audioPlayer.play().catch(() => {});
   } else {
     step(1);
   }
 }
 
 function playAlbum(id, disc = null) {
-  let tracks = state.tracks.filter(track => track.albumId === id && (track.localFile || track.driveFile));
+  let tracks = state.tracks.filter(track => track.albumId === id && track.localFile);
   if (disc) tracks = tracks.filter(track => track.disc === Number(disc));
-  if (!tracks.length) return;
+  if (!tracks.length) {
+    showToast("Este álbum não possui músicas locais.");
+    return;
+  }
   playTrack(state.shuffle ? tracks[Math.floor(Math.random() * tracks.length)].id : tracks[0].id);
 }
 
-async function playYouTubeTrack(track) {
-  // Kept as a compatibility shim for old library entries. We intentionally do
-  // not create an iframe/popout.
-  state.isPlaying = false;
-  setPlayingIcons(false);
-  updateTrackRows();
-  showToast("Esta faixa não tem áudio local/Drive disponível.");
-}
-
 async function playTrack(id) {
-  const track = trackById(id); if (!track) return;
+  const track = trackById(id);
+  if (!track) return;
+
+  if (!track.localFile) {
+    showToast("Esta faixa não possui um MP3 local.");
+    return;
+  }
+
   const changed = state.currentId !== id;
-  if (changed) { state.currentId=id; localStorage.setItem("trakify:lastPlayed",JSON.stringify(id)); state.lastPlayed=id; updateNowPlaying(track); renderQuickCards(); }
-  updateYouTubeLinks(track);
+  if (changed) {
+    state.currentId = id;
+    localStorage.setItem("trakify:lastPlayed", JSON.stringify(id));
+    state.lastPlayed = id;
+    updateNowPlaying(track);
+    renderQuickCards();
+  }
+
   state.isPlaying = false;
   setPlayingIcons(false);
   updateTrackRows();
-  const token = ++driveToken;
-  stopDrive();
-  if (track.localFile) playLocalTrack(track, token);
-  else if (track.driveFile) playDriveTrack(track, true, token);
-  else playYouTubeTrack(track);
+
+  const token = ++playbackToken;
+  resetAudio();
+  playLocalTrack(track, token);
 }
 
 async function togglePlay() {
-  if (!state.currentId) { const first=state.tracks[0]; if(first) playTrack(first.id); return; }
-  if (["local-loading","drive-loading"].includes(activeSource)) { showToast("Carregando a faixa…"); return; }
-  if (["local","drive"].includes(activeSource) && driveAudio) {
-    if (driveAudio.paused) {
-      if ("audioSession" in navigator) { try { navigator.audioSession.type = "playback"; } catch {} }
-      driveAudio.play().catch(() => {});
-    } else driveAudio.pause();
+  if (!state.currentId) {
+    const first = state.tracks.find(track => track.localFile);
+    if (first) playTrack(first.id);
     return;
   }
+
+  if (activeSource === "local-loading") {
+    showToast("Carregando a faixa…");
+    return;
+  }
+
+  if (activeSource === "local" && audioPlayer) {
+    if (audioPlayer.paused) {
+      if ("audioSession" in navigator) {
+        try { navigator.audioSession.type = "playback"; } catch {}
+      }
+      audioPlayer.play().catch(() => {});
+    } else {
+      audioPlayer.pause();
+    }
+    return;
+  }
+
   playTrack(state.currentId);
 }
 
 function step(direction) {
-  const list = queue().filter(track => track.localFile || track.driveFile);
+  const list = queue().filter(track => track.localFile);
   if (!list.length) return;
 
   let index = list.findIndex(track => track.id === state.currentId);
@@ -1023,7 +1006,7 @@ els.sheetBackdrop.addEventListener("click", closeSheet);
 
 function seekFrom(input) {
   const track=currentTrack(); if(!track) return; const duration=segmentDuration(track); if(!duration) return;
-  if(["local","drive"].includes(activeSource) && driveAudio) driveAudio.currentTime=Number(input.value)/1000*duration;
+  if (["local", "local-loading"].includes(activeSource) && audioPlayer) audioPlayer.currentTime = Number(input.value) / 1000 * duration;
   updatePlaybackProgress();
 }
 els.seek.addEventListener("input", () => seekFrom(els.seek));
@@ -1036,7 +1019,7 @@ function applyVolume(value) {
   value = Math.max(0, Math.min(1, Number(value)));
   localStorage.setItem("trakify:volume", String(value));
   if (value > 0) localStorage.setItem("trakify:lastNonZeroVolume", String(value));
-  if (driveAudio) { driveAudio.volume = value; driveAudio.muted = value === 0; }
+  if (audioPlayer) { audioPlayer.volume = value; audioPlayer.muted = value === 0; }
   if (els.volume) els.volume.value = value;
   if (els.sheetVolume) els.sheetVolume.value = value;
   if (els.sheetVolumeValue) els.sheetVolumeValue.textContent = `${Math.round(value * 100)}%`;
@@ -1055,27 +1038,27 @@ if ("audioSession" in navigator) {
   try { navigator.audioSession.type = "playback"; } catch {}
 }
 
-if (driveAudio) {
-  try { driveAudio.disableRemotePlayback = true; } catch {}
+if (audioPlayer) {
+  try { audioPlayer.disableRemotePlayback = true; } catch {}
 }
 
 if ("mediaSession" in navigator) {
   navigator.mediaSession.setActionHandler("play", () => togglePlay());
-  navigator.mediaSession.setActionHandler("pause", () => driveAudio?.pause());
+  navigator.mediaSession.setActionHandler("pause", () => audioPlayer?.pause());
   navigator.mediaSession.setActionHandler("previoustrack", () => step(-1));
   navigator.mediaSession.setActionHandler("nexttrack", () => step(1));
   navigator.mediaSession.setActionHandler("seekbackward", details => {
-    if (!driveAudio) return;
-    driveAudio.currentTime = Math.max(0, driveAudio.currentTime - (details.seekOffset || 10));
+    if (!audioPlayer) return;
+    audioPlayer.currentTime = Math.max(0, audioPlayer.currentTime - (details.seekOffset || 10));
   });
   navigator.mediaSession.setActionHandler("seekforward", details => {
-    if (!driveAudio) return;
-    driveAudio.currentTime = Math.min(driveAudio.duration || Infinity, driveAudio.currentTime + (details.seekOffset || 10));
+    if (!audioPlayer) return;
+    audioPlayer.currentTime = Math.min(audioPlayer.duration || Infinity, audioPlayer.currentTime + (details.seekOffset || 10));
   });
   try {
     navigator.mediaSession.setActionHandler("seekto", details => {
-      if (!driveAudio || !Number.isFinite(details.seekTime)) return;
-      driveAudio.currentTime = Math.max(0, Math.min(driveAudio.duration || Infinity, details.seekTime));
+      if (!audioPlayer || !Number.isFinite(details.seekTime)) return;
+      audioPlayer.currentTime = Math.max(0, Math.min(audioPlayer.duration || Infinity, details.seekTime));
     });
   } catch {}
 }

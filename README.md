@@ -1,45 +1,34 @@
-# Trakify
+# Trakify v1.9 Local
 
-Player musical mobile-first para GitHub Pages.
+Versão temporária do Trakify feita para GitHub Pages com reprodução **exclusivamente por arquivos MP3 locais do próprio repositório**.
 
-## v1.8 — áudio local e mobile
+## Reprodução
 
-Esta versão usa a seguinte ordem de reprodução:
+- Fonte única: `assets/audio/*.mp3`
+- Sem Google Drive como fonte ou fallback de áudio
+- Sem YouTube como fonte ou fallback de áudio
+- Player HTML5 nativo com Media Session para controles do sistema quando o navegador oferecer suporte
+- Controle de volume no desktop, player mobile e tela de reprodução
 
-1. **MP3 local em `assets/audio/`** — fonte principal, rápida e estável no GitHub Pages.
-2. **Google Drive** — fallback caso um arquivo local esteja ausente ou falhe.
-3. **YouTube** — mantido apenas como referência dos discos/thumbnails. O player incorporado e o popout foram removidos.
+Os identificadores do YouTube ainda podem existir apenas como referência visual para thumbnails. Eles **não participam da reprodução de áudio**.
 
-As 22 faixas de **Graduation (Ultimate Edition)** foram compactadas de 192 kbps para 128 kbps, mantendo MP3, estéreo e 44,1 kHz. O conjunto caiu de aproximadamente 128 MiB para cerca de 85 MiB.
+## GitHub Pages
 
-## Mobile / segundo plano
+Envie o conteúdo desta pasta para a raiz do repositório e habilite GitHub Pages apontando para a branch publicada. Os caminhos das músicas são relativos, então funcionam também em URLs do tipo `usuario.github.io/repositorio/`.
 
-O player usa `<audio>` nativo, Media Session API e, quando disponível, Audio Session API em modo `playback`. Isso melhora reprodução com a tela bloqueada, troca de aplicativo, controles da tela de bloqueio e fones de ouvido.
-
-Também foi adicionado `manifest.webmanifest`, suporte a instalação como PWA e um Service Worker para o shell do app.
-
-> Navegadores e sistemas móveis ainda podem interromper qualquer site por economia extrema de bateria, encerramento manual do navegador ou políticas do próprio sistema. O Trakify não pausa a música por conta própria ao perder foco.
-
-## Volume no celular
-
-- Botão de volume no mini-player.
-- Slider de volume dentro do player em tela cheia.
-- Volume salvo no navegador.
-- Toque no botão do mini-player alterna entre mudo e o último volume usado.
-
-Em aparelhos que deixam o volume exclusivamente sob controle físico do sistema, o navegador pode limitar alterações programáticas.
+> Observação: o GitHub bloqueia arquivos individuais maiores que 100 MB. As faixas desta versão ficam muito abaixo desse limite. O repositório completo ainda precisa respeitar os limites e políticas do GitHub.
 
 ## Biblioteca
 
-A configuração fica em `data/library.json`. Cada faixa possui `localFile` e, opcionalmente, `driveFile` e informação do vídeo de referência.
+A configuração principal fica em `data/library.json`. Cada faixa precisa possuir `localFile`, por exemplo:
 
-## Rodar localmente
-
-```bash
-python -m http.server 8000
+```json
+{
+  "title": "Good Morning",
+  "artist": "IcyCity",
+  "localFile": "assets/audio/good-morning.mp3"
+}
 ```
-
-Abra `http://127.0.0.1:8000`.
 
 ## Validação
 
@@ -47,17 +36,4 @@ Abra `http://127.0.0.1:8000`.
 python scripts/validate.py
 ```
 
-O validador confere catálogo e presença de todos os MP3 locais.
-
-## GitHub Pages
-
-1. Envie os arquivos para o repositório.
-2. Abra **Settings → Pages**.
-3. Escolha **Deploy from a branch**.
-4. Selecione `main` e `/ (root)`.
-
-Nenhum arquivo individual desta versão chega perto do limite de 100 MB do GitHub.
-
-## Drive opcional
-
-O arquivo `worker/drive-cache-worker.js` continua disponível caso você queira usar um Worker como cache do Drive. Configure `driveProxyBase` no fim do `index.html` se publicar esse Worker.
+O script confere a estrutura da biblioteca e se todos os MP3 locais referenciados realmente existem.
