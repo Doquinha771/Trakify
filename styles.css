@@ -20,6 +20,7 @@
 }
 
 * { box-sizing: border-box; }
+img { display:block; max-width:100%; -webkit-user-drag:none; user-select:none; pointer-events:none; }
 html { background: var(--bg); scroll-behavior: smooth; }
 body {
   margin: 0;
@@ -175,6 +176,7 @@ a { color: inherit; }
   border-radius: 14px;
   background: var(--surface-2);
   box-shadow: 0 18px 50px rgba(0,0,0,.42);
+  contain: paint;
 }
 .featured-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .featured-copy { min-width: 0; }
@@ -293,6 +295,8 @@ a { color: inherit; }
 }
 .album-carousel::-webkit-scrollbar { display: none; }
 .album-card {
+  width: 100%;
+  max-width: 100%;
   min-width: 0;
   border: 0;
   padding: 0;
@@ -310,6 +314,7 @@ a { color: inherit; }
   border-radius: 17px;
   background: var(--surface-2);
   box-shadow: 0 13px 34px rgba(0,0,0,.19);
+  contain: paint;
 }
 .album-art::after {
   content: "";
@@ -320,6 +325,8 @@ a { color: inherit; }
   pointer-events: none;
 }
 .album-art img {
+  min-width: 0;
+  max-width: 100%;
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -369,6 +376,7 @@ a { color: inherit; }
   border-radius: 10px;
   overflow: hidden;
   background: var(--surface-2);
+  contain: paint;
 }
 .home-track-art img { width: 100%; height: 100%; object-fit: cover; }
 .home-track-copy { min-width: 0; }

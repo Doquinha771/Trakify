@@ -86,3 +86,13 @@ A disponibilidade de reprodução depende de o vídeo permitir incorporação no
 O catálogo foi embutido no `index.html`, então o álbum não depende de `fetch()` para aparecer. Cada faixa tenta primeiro o arquivo individual do Google Drive. O player testa rotas públicas alternativas do próprio Drive e, se elas forem bloqueadas, expirarem ou demorarem demais, muda automaticamente para o trecho correspondente no YouTube. Foram preservados os 22 IDs já cadastrados.
 
 Para o Drive funcionar, cada arquivo precisa estar em **Qualquer pessoa com o link**, sem exigir login, e permitir download. Arquivos que excederem a cota pública do Google, estiverem bloqueados por política ou usarem um codec incompatível com o navegador cairão no YouTube automaticamente.
+
+## Cache de áudio recomendado
+
+O arquivo `worker/drive-cache-worker.js` contém um Worker pronto para colocar o áudio atrás de cache, aceitar pedidos parciais do player e evitar CORS. Depois de publicar o Worker, copie a URL dele para `driveProxyBase` no fim do `index.html`:
+
+```html
+<script>window.TRAKIFY_CONFIG = { driveProxyBase: "https://SEU-WORKER.workers.dev" };</script>
+```
+
+Ordem de reprodução: **Worker com cache → Drive direto → YouTube**. Configure no Worker a variável `SITE_ORIGIN` com a origem do seu GitHub Pages para restringir o acesso; durante testes, o valor padrão aceita qualquer origem.

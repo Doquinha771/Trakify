@@ -125,7 +125,7 @@ function youtubeWatchUrl(track) {
 function imageMarkup(primary, fallback, alt = "") {
   const src = primary || fallback;
   if (!src) return "♫";
-  return `<img src="${esc(src)}" ${fallback && fallback !== src ? `data-fallback-src="${esc(fallback)}"` : ""} alt="${esc(alt)}">`;
+  return `<img src="${esc(src)}" ${fallback && fallback !== src ? `data-fallback-src="${esc(fallback)}"` : ""} alt="${esc(alt)}" draggable="false" decoding="async">`;
 }
 
 function fmt(seconds) {
@@ -695,13 +695,15 @@ function driveViewUrl(track) {
 function driveCandidates(track) {
   if (!track?.driveFile) return [];
   const id = encodeURIComponent(track.driveFile);
+  const proxy = String(window.TRAKIFY_CONFIG?.driveProxyBase || "").trim().replace(/\/$/, "");
   return [
+    proxy ? `${proxy}/audio?id=${id}` : "",
     `https://drive.usercontent.google.com/download?id=${id}&export=download&confirm=t`,
     `https://drive.usercontent.google.com/uc?id=${id}&export=download&confirm=t`,
     `https://drive.google.com/uc?export=download&id=${id}&confirm=t`,
     `https://drive.google.com/uc?export=download&id=${id}`,
     `https://drive.google.com/uc?id=${id}&export=download`
-  ];
+  ].filter(Boolean);
 }
 function setActiveSource(source, track = currentTrack()) {
   activeSource = source;

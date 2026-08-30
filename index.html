@@ -68,9 +68,9 @@
       <section id="homeView" class="view home-view">
         <div class="welcome-row">
           <div>
-            <p class="eyebrow">SUA BIBLIOTECA</p>
+            <p class="eyebrow">INÍCIO</p>
             <h1 id="welcomeTitle">Boa noite.</h1>
-            <p>O que vai tocar agora?</p>
+            <p>Escolha um atalho ou toque no álbum para começar.</p>
           </div>
         </div>
 
@@ -79,8 +79,8 @@
         <section class="home-section" id="quickSection">
           <div class="section-heading">
             <div>
-              <p class="eyebrow">ATALHOS</p>
-              <h2>Volte para a música</h2>
+              <p class="eyebrow">ACESSO RÁPIDO</p>
+              <h2>Comece por aqui</h2>
             </div>
           </div>
           <div id="quickGrid" class="quick-grid"></div>
@@ -89,8 +89,8 @@
         <section class="home-section">
           <div class="section-heading">
             <div>
-              <p class="eyebrow">COLEÇÃO</p>
-              <h2>Seus álbuns</h2>
+              <p class="eyebrow">ÁLBUNS</p>
+              <h2>Disponíveis agora</h2>
             </div>
             <button class="text-button" id="seeAlbumsBtn">
               Ver tudo <i class="fi fi-rr-angle-small-right"></i>
@@ -102,8 +102,8 @@
         <section class="home-section">
           <div class="section-heading">
             <div>
-              <p class="eyebrow">FAIXAS</p>
-              <h2>Para tocar agora</h2>
+              <p class="eyebrow">MÚSICAS</p>
+              <h2>Ouça sem procurar</h2>
             </div>
             <button class="text-button" id="seeTracksBtn">
               Ver tudo <i class="fi fi-rr-angle-small-right"></i>
@@ -348,6 +348,7 @@
   <audio id="driveAudio" preload="metadata"></audio>
 
   <div id="toast" class="toast" hidden></div>
+  <script>window.TRAKIFY_CONFIG = { driveProxyBase: "" };</script>
   <script id="trakifyLibraryInline">window.TRAKIFY_LIBRARY = {"albums":[{"id":"graduation-ultimate-edition","title":"Graduation (Ultimate Edition)","artist":"Various Artists","subtitle":"Ultimate Edition","cover":"1eitkFfMOYicE-ODXpnVTjmY1MSehzjMb","banner":"1yfMbyRzUHe3wH-hJGPwv8MqobxDqDihp","fallbackAccent":"#d96bb6","discs":[{"title":"Disco 1","youtube":"Of7dmQrpoEo","tracks":[{"title":"Good Morning","artist":"IcyCity","start":0,"driveFile":"1HWfXL3Nk7-8iFfLS3GIj4bWQ1JUH9h9e"},{"title":"Champion","artist":"IcyCity","start":259,"driveFile":"1EvY5AkIxCaBCLfCHR7u8G5jpe1DZKFUy"},{"title":"Takin Off","artist":"Juy","start":427,"driveFile":"12xHt9AMrjRTNCsZZ63BNhFhMwWjxqIdh"},{"title":"Stronger","artist":"KanD.M.F","start":629,"driveFile":"1an6ScR_S2SyEz7TUNmbMComNh4XmfeBN"},{"title":"American Boy","artist":"Kanye Meat Rider","start":985,"driveFile":"1-W8RlsycUrC4Xl11tUo619cVsDjDYCjU"},{"title":"Good Life","artist":"Juy","start":1427,"driveFile":"15Q16J8skYfbLYM99sYo0UWH9FbswJe47"},{"title":"I Wonder","artist":"Mochi&Broccoli","start":1653,"driveFile":"17n5FKzGz0WmIn_we-l8tP4yBylTWBFQl"},{"title":"Can't Tell Me Nothing","artist":"KanD.M.F","start":1908,"driveFile":"10_Xc82JPqZ4o0f1FuEUkebMHc8_7ebnl"},{"title":"Ayyy Girl","artist":"Juy","start":2224,"driveFile":"10kWQeApia7XIRffvkoOEgdrD_XTFCeBZ"},{"title":"Building","artist":"Berais","start":2447,"driveFile":"1WL6umLNvShj7JWnM2EWD-D-UHPoOgvru"},{"title":"Barry Bonds","artist":"ahmed 2.0","start":2603,"driveFile":"10-dQy7UQ_BwP08jMVvBlqpFAs_3dAuq0"}]},{"title":"Disco 2","youtube":"VLwlI7HSdrY","tracks":[{"title":"Bitter Sweet Poetry","artist":"ahmed 2.0","start":0,"driveFile":"10nIa9JznDNctfMlzYenUCJ_xFPTmCdBz"},{"title":"Drunk and Hot Girls","artist":"IcyCity","start":239,"driveFile":"1xD364APlqIwZ1SdIWh-21u4bjdiFpfCS"},{"title":"Diamonds","artist":"Juy","start":525,"driveFile":"1wsvvtJsTUkz-jLYhq0E8u7vHXC2p9Hcb"},{"title":"Passenger","artist":"Kamiien","start":740,"driveFile":"1LOj1-fJrbEOo23sdBw1oKvHhemdaifPU"},{"title":"Flashing Lights","artist":"Juy","start":979,"driveFile":"1ag9_3OEQkaOhkpLBOSn4xg1Cuao7HJQn"},{"title":"Everything I Am","artist":"ahmed 2.0","start":1215,"driveFile":"1ZXFdEBOV-sqNfMxznCSmlIZT5lhygwi-"},{"title":"The Glory","artist":"Berais","start":1510,"driveFile":"146G_LP4awUZnsklOeoXtzuu7NQU1qbcI"},{"title":"Homecoming","artist":"IcyCity","start":1669,"driveFile":"1fiHJ7TUzmvQe165hqyadHJqAbrJqz4OG"},{"title":"Big Brother","artist":"Juy","start":1873,"driveFile":"1uOltb1UQPdGHSsL0jGwaX3-UNuDpyci3"},{"title":"Dream Of Your Love","artist":"Juy","start":2174,"driveFile":"1WPGkKzwb1XYkEuON6LfyeF4YpZRHBhSG"},{"title":"Good Night","artist":"IcyCity","start":2378,"driveFile":"1j33AAfG-vR-SHuCH-k5LY_nj-Ft7GlCs"}]}],"driveFolder":"1weYec2Y-Q0eUnaIsH0Qy2Wbj7QUYJ9CR"}]};</script>
   <script src="app.js" defer></script>
 </body>
