@@ -11,146 +11,127 @@
       "discs": [
         {
           "title": "Disco 1",
+          "youtube": "Of7dmQrpoEo",
           "tracks": [
             {
               "title": "Good Morning",
               "artist": "IcyCity",
-              "file": "1HWfXL3Nk7-8iFfLS3GIj4bWQ1JUH9h9e",
-              "duration": "4:19"
+              "start": 0
             },
             {
               "title": "Champion",
               "artist": "IcyCity",
-              "file": "1EvY5AkIxCaBCLfCHR7u8G5jpe1DZKFUy",
-              "duration": "2:48"
+              "start": 259
             },
             {
               "title": "Takin Off",
               "artist": "Juy",
-              "file": "12xHt9AMrjRTNCsZZ63BNhFhMwWjxqIdh",
-              "duration": "3:22"
+              "start": 427
             },
             {
               "title": "Stronger",
               "artist": "KanD.M.F",
-              "file": "1an6ScR_S2SyEz7TUNmbMComNh4XmfeBN",
-              "duration": "5:56"
+              "start": 629
             },
             {
               "title": "American Boy",
               "artist": "Kanye Meat Rider",
-              "file": "1-W8RlsycUrC4Xl11tUo619cVsDjDYCjU",
-              "duration": "7:22"
+              "start": 985
             },
             {
               "title": "Good Life",
               "artist": "Juy",
-              "file": "15Q16J8skYfbLYM99sYo0UWH9FbswJe47",
-              "duration": "3:46"
+              "start": 1427
             },
             {
               "title": "I Wonder",
               "artist": "Mochi&Broccoli",
-              "file": "17n5FKzGz0WmIn_we-l8tP4yBylTWBFQl",
-              "duration": "4:15"
+              "start": 1653
             },
             {
               "title": "Can't Tell Me Nothing",
               "artist": "KanD.M.F",
-              "file": "10_Xc82JPqZ4o0f1FuEUkebMHc8_7ebnl",
-              "duration": "5:16"
+              "start": 1908
             },
             {
               "title": "Ayyy Girl",
               "artist": "Juy",
-              "file": "10kWQeApia7XIRffvkoOEgdrD_XTFCeBZ",
-              "duration": "3:43"
+              "start": 2224
             },
             {
               "title": "Building",
               "artist": "Berais",
-              "file": "1WL6umLNvShj7JWnM2EWD-D-UHPoOgvru",
-              "duration": "2:36"
+              "start": 2447
             },
             {
               "title": "Barry Bonds",
               "artist": "ahmed 2.0",
-              "file": "10-dQy7UQ_BwP08jMVvBlqpFAs_3dAuq0"
+              "start": 2603
             }
           ]
         },
         {
           "title": "Disco 2",
+          "youtube": "VLwlI7HSdrY",
           "tracks": [
             {
               "title": "Bitter Sweet Poetry",
               "artist": "ahmed 2.0",
-              "file": "10nIa9JznDNctfMlzYenUCJ_xFPTmCdBz",
-              "duration": "3:59"
+              "start": 0
             },
             {
               "title": "Drunk and Hot Girls",
               "artist": "IcyCity",
-              "file": "1xD364APlqIwZ1SdIWh-21u4bjdiFpfCS",
-              "duration": "4:46"
+              "start": 239
             },
             {
               "title": "Diamonds",
               "artist": "Juy",
-              "file": "1wsvvtJsTUkz-jLYhq0E8u7vHXC2p9Hcb",
-              "duration": "3:35"
+              "start": 525
             },
             {
               "title": "Passenger",
               "artist": "Kamiien",
-              "file": "1LOj1-fJrbEOo23sdBw1oKvHhemdaifPU",
-              "duration": "3:59"
+              "start": 740
             },
             {
               "title": "Flashing Lights",
               "artist": "Juy",
-              "file": "1ag9_3OEQkaOhkpLBOSn4xg1Cuao7HJQn",
-              "duration": "3:56"
+              "start": 979
             },
             {
               "title": "Everything I Am",
               "artist": "ahmed 2.0",
-              "file": "1ZXFdEBOV-sqNfMxznCSmlIZT5lhygwi-",
-              "duration": "4:55"
+              "start": 1215
             },
             {
               "title": "The Glory",
               "artist": "Berais",
-              "file": "146G_LP4awUZnsklOeoXtzuu7NQU1qbcI",
-              "duration": "2:39"
+              "start": 1510
             },
             {
               "title": "Homecoming",
               "artist": "IcyCity",
-              "file": "1fiHJ7TUzmvQe165hqyadHJqAbrJqz4OG",
-              "duration": "3:24"
+              "start": 1669
             },
             {
               "title": "Big Brother",
               "artist": "Juy",
-              "file": "1uOltb1UQPdGHSsL0jGwaX3-UNuDpyci3",
-              "duration": "5:01"
+              "start": 1873
             },
             {
               "title": "Dream Of Your Love",
               "artist": "Juy",
-              "file": "1WPGkKzwb1XYkEuON6LfyeF4YpZRHBhSG",
-              "duration": "3:24"
+              "start": 2174
             },
             {
               "title": "Good Night",
               "artist": "IcyCity",
-              "file": "1j33AAfG-vR-SHuCH-k5LY_nj-Ft7GlCs"
+              "start": 2378
             }
           ]
         }
-      ],
-      "driveFolder": "1weYec2Y-Q0eUnaIsH0Qy2Wbj7QUYJ9CR"
+      ]
     }
   ]
 }

@@ -193,6 +193,11 @@
             <i class="fi fi-rr-angle-small-left"></i>
           </button>
 
+          <button id="albumBrandHome" class="album-brand-home" aria-label="Ir para o início">
+            <span class="brand-mark"><i class="fi fi-rr-music"></i></span>
+            <span>Trakify</span>
+          </button>
+
           <div class="album-banner-content">
             <div id="albumCover" class="album-cover">♫</div>
             <div class="album-copy">
@@ -271,6 +276,14 @@
     </div>
   </footer>
 
+  <aside id="desktopYoutubeDock" class="desktop-youtube-dock" hidden>
+    <div class="youtube-source-head">
+      <span><i class="fi fi-rr-play"></i> Fonte: YouTube</span>
+      <a id="desktopYoutubeLink" href="https://www.youtube.com/" target="_blank" rel="noopener noreferrer">Abrir no YouTube</a>
+    </div>
+    <div id="desktopYoutubeMount" class="youtube-embed"></div>
+  </aside>
+
   <nav class="mobile-nav" aria-label="Navegação inferior">
     <button class="mobile-nav-item active" data-view="home">
       <i class="fi fi-rr-home"></i><span>Início</span>
@@ -300,6 +313,14 @@
         </button>
       </header>
 
+      <div class="youtube-source mobile-youtube-source">
+        <div class="youtube-source-head">
+          <span><i class="fi fi-rr-play"></i> Fonte: YouTube</span>
+          <a id="sheetYoutubeLink" href="https://www.youtube.com/" target="_blank" rel="noopener noreferrer">Abrir</a>
+        </div>
+        <div id="mobileYoutubeMount" class="youtube-embed"></div>
+      </div>
+
       <div id="sheetCover" class="sheet-cover">♫</div>
 
       <div class="sheet-track-info">
@@ -325,7 +346,6 @@
   </section>
 
   <div id="toast" class="toast" hidden></div>
-  <audio id="audio" preload="metadata"></audio>
   <script src="data/library.js"></script>
   <script src="app.js" defer></script>
 </body>

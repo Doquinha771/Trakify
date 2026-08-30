@@ -8,14 +8,12 @@ const state = {
   favorites: new Set(JSON.parse(localStorage.getItem("trakify:favorites") || "[]")),
   shuffle: false,
   repeat: false,
-  currentCandidates: [],
-  audioCandidateIndex: 0,
+  isPlaying: false,
   query: "",
   lastPlayed: JSON.parse(localStorage.getItem("trakify:lastPlayed") || "null")
 };
 
 const $ = id => document.getElementById(id);
-const audio = $("audio");
 
 const els = {
   views: [...document.querySelectorAll(".view")],
@@ -56,6 +54,7 @@ const els = {
   albumMeta: $("albumMeta"),
   albumTrackList: $("albumTrackList"),
   albumBackBtn: $("albumBackBtn"),
+  albumBrandHome: $("albumBrandHome"),
   albumPlayBtn: $("albumPlayBtn"),
   albumShuffleBtn: $("albumShuffleBtn"),
 
@@ -98,6 +97,9 @@ const els = {
   sheetPlayBtn: $("sheetPlayBtn"),
   sheetNextBtn: $("sheetNextBtn"),
   sheetRepeatBtn: $("sheetRepeatBtn"),
+  sheetYoutubeLink: $("sheetYoutubeLink"),
+  desktopYoutubeDock: $("desktopYoutubeDock"),
+  desktopYoutubeLink: $("desktopYoutubeLink"),
 
   toast: $("toast"),
   themeColorMeta: $("themeColorMeta")
@@ -111,17 +113,19 @@ function driveImage(id, size = 1200) {
   return id ? `https://drive.google.com/thumbnail?id=${encodeURIComponent(id)}&sz=w${size}` : "";
 }
 
-function audioUrls(file) {
-  const id = encodeURIComponent(file);
-  return [
-    `https://drive.usercontent.google.com/download?id=${id}&export=download&confirm=t`,
-    `https://drive.google.com/uc?export=download&id=${id}`,
-    `https://drive.google.com/uc?id=${id}&export=download`
-  ];
+function youtubeThumb(videoId, quality = "hqdefault") {
+  return videoId ? `https://i.ytimg.com/vi/${encodeURIComponent(videoId)}/${quality}.jpg` : "";
 }
 
-function drivePreview(file) {
-  return `https://drive.google.com/file/d/${encodeURIComponent(file)}/view`;
+function youtubeWatchUrl(track) {
+  if (!track?.youtube) return "https://www.youtube.com/";
+  return `https://www.youtube.com/watch?v=${encodeURIComponent(track.youtube)}&t=${Math.max(0, Math.floor(track.start || 0))}s`;
+}
+
+function imageMarkup(primary, fallback, alt = "") {
+  const src = primary || fallback;
+  if (!src) return "♫";
+  return `<img src="${esc(src)}" ${fallback && fallback !== src ? `data-fallback-src="${esc(fallback)}"` : ""} alt="${esc(alt)}">`;
 }
 
 function fmt(seconds) {
@@ -149,17 +153,33 @@ function trackById(id) {
   return state.tracks.find(track => track.id === id) || null;
 }
 
+function albumFallbackImage(album) {
+  return youtubeThumb(album?.discs?.[0]?.youtube, "hqdefault");
+}
+
 function coverFor(track) {
   return driveImage(albumById(track?.albumId)?.cover, 600);
+}
+
+function coverFallbackFor(track) {
+  return youtubeThumb(track?.youtube, "hqdefault");
 }
 
 function flattenLibrary(data) {
   const tracks = [];
   (data.albums || []).forEach(album => {
     (album.discs || []).forEach((disc, discIndex) => {
-      (disc.tracks || []).forEach((track, trackIndex) => {
+      const discTracks = disc.tracks || [];
+      discTracks.forEach((track, trackIndex) => {
+        const start = Number(track.start || 0);
+        const nextStart = trackIndex < discTracks.length - 1 ? Number(discTracks[trackIndex + 1].start) : null;
+        const end = Number.isFinite(nextStart) ? nextStart : null;
         tracks.push({
           ...track,
+          youtube: disc.youtube,
+          start,
+          end,
+          duration: end !== null ? fmt(end - start) : (track.duration || ""),
           id: `${album.id}-d${discIndex + 1}-t${trackIndex + 1}`,
           albumId: album.id,
           albumTitle: album.title,
@@ -226,17 +246,18 @@ function renderFeatured() {
   }
 
   const banner = driveImage(album.banner, 1800);
+  const fallback = albumFallbackImage(album);
   const cover = driveImage(album.cover, 700);
   const count = state.tracks.filter(t => t.albumId === album.id).length;
 
   els.featuredSection.innerHTML = `
     <article class="featured-card reveal-item" data-open-album="${esc(album.id)}">
-      <div class="featured-banner" style="background-image:url('${esc(banner)}')"></div>
+      <div class="featured-banner" style="background-image:url('${esc(banner)}'),url('${esc(fallback)}')"></div>
       <button class="featured-play" data-play-album="${esc(album.id)}" aria-label="Tocar ${esc(album.title)}">
         ${icon("play", true)}
       </button>
       <div class="featured-content">
-        <div class="featured-cover">${cover ? `<img src="${esc(cover)}" alt="">` : "♫"}</div>
+        <div class="featured-cover">${imageMarkup(cover, fallback, album.title)}</div>
         <div class="featured-copy">
           <p>EM DESTAQUE</p>
           <h2>${esc(album.title)}</h2>
@@ -283,7 +304,7 @@ function renderQuickCards() {
       ${card.trackId ? `data-quick-track="${esc(card.trackId)}"` : ""}
       ${card.albumId ? `data-quick-album="${esc(card.albumId)}" data-disc="${card.disc}"` : ""}>
       <span class="quick-art">
-        ${card.image ? `<img src="${esc(card.image)}" alt="">` : icon(card.icon || "music", false)}
+        ${card.image ? imageMarkup(card.image, albumFallbackImage(album), card.title) : icon(card.icon || "music", false)}
       </span>
       <span class="quick-copy">
         <strong>${esc(card.title)}</strong>
@@ -295,9 +316,10 @@ function renderQuickCards() {
 
 function albumCard(album, i = 0) {
   const cover = driveImage(album.cover, 650);
+  const fallback = albumFallbackImage(album);
   return `
     <button class="album-card reveal-item" data-open-album="${esc(album.id)}" style="--delay:${i * 60}ms">
-      <span class="album-art">${cover ? `<img src="${esc(cover)}" alt="">` : "♫"}</span>
+      <span class="album-art">${imageMarkup(cover, fallback, album.title)}</span>
       <h3>${esc(album.title)}</h3>
       <p>${esc(album.artist)}</p>
     </button>`;
@@ -316,9 +338,10 @@ function renderHomeTracks() {
   const list = state.tracks.slice(0, 8);
   els.homeTrackList.innerHTML = list.map((track, i) => {
     const cover = coverFor(track);
+    const fallback = coverFallbackFor(track);
     return `
       <button class="home-track reveal-item" data-play-track="${esc(track.id)}" style="--delay:${i * 42}ms">
-        <span class="home-track-art">${cover ? `<img src="${esc(cover)}" alt="">` : ""}</span>
+        <span class="home-track-art">${imageMarkup(cover, fallback, track.albumTitle)}</span>
         <span class="home-track-copy">
           <strong>${esc(track.title)}</strong>
           <span>${esc(track.artist)}</span>
@@ -341,7 +364,7 @@ function trackRow(track, index, options = {}) {
   const current = state.currentId === track.id;
   return `
     <div class="track-row reveal-item ${current ? "current" : ""}" data-track-row="${esc(track.id)}" data-play-track="${esc(track.id)}" style="--delay:${Math.min(index, 12) * 28}ms">
-      <div class="track-index">${current && !audio.paused ? icon("play", true) : (options.useTrackNumber ? track.trackNumber : index + 1)}</div>
+      <div class="track-index" data-track-index="${esc(track.id)}" data-index-label="${options.useTrackNumber ? track.trackNumber : index + 1}">${current && state.isPlaying ? icon("play", true) : (options.useTrackNumber ? track.trackNumber : index + 1)}</div>
       <div class="track-copy">
         <span class="track-title">${esc(track.title)}</span>
         <span class="track-subtitle">${esc(track.artist)}${options.showAlbum ? ` · ${esc(track.albumTitle)}` : ""}</span>
@@ -404,15 +427,16 @@ function renderAlbum(id) {
   const tracks = state.tracks.filter(track => track.albumId === id);
   const cover = driveImage(album.cover, 900);
   const banner = driveImage(album.banner, 1900);
+  const fallback = albumFallbackImage(album);
 
-  els.albumBanner.style.backgroundImage = `url("${banner}")`;
-  els.albumCover.innerHTML = cover ? `<img id="albumColorSource" crossorigin="anonymous" src="${esc(cover)}" alt="">` : "♫";
+  els.albumBanner.style.backgroundImage = `url("${banner}"), url("${fallback}")`;
+  els.albumCover.innerHTML = imageMarkup(cover, fallback, album.title);
   els.albumTitle.textContent = album.title;
   els.albumMeta.textContent = `${album.artist} · ${tracks.length} faixas${album.subtitle ? ` · ${album.subtitle}` : ""}`;
   renderTrackList(els.albumTrackList, tracks, { discHeaders: true, useTrackNumber: true });
 
   setTheme(album.fallbackAccent || "#d96bb6");
-  extractImageTheme(banner, album.fallbackAccent || "#d96bb6");
+  extractImageTheme(banner || fallback, album.fallbackAccent || "#d96bb6", fallback);
   updateNavActive(null);
 }
 
@@ -434,7 +458,7 @@ function hexToRgb(hex) {
   } : null;
 }
 
-function extractImageTheme(url, fallback) {
+function extractImageTheme(url, fallback, fallbackUrl = "") {
   const img = new Image();
   img.crossOrigin = "anonymous";
   img.src = url;
@@ -471,7 +495,10 @@ function extractImageTheme(url, fallback) {
       setTheme(fallback);
     }
   };
-  img.onerror = () => setTheme(fallback);
+  img.onerror = () => {
+    if (fallbackUrl && fallbackUrl !== url) extractImageTheme(fallbackUrl, fallback, "");
+    else setTheme(fallback);
+  };
 }
 
 function setView(view, options = {}) {
@@ -534,63 +561,246 @@ function queue() {
   return state.tracks;
 }
 
+let ytApiPromise = null;
+let ytPlayer = null;
+let ytPlayerReady = null;
+let ytMountId = null;
+let progressTimer = null;
+let segmentTransitioning = false;
+
+function loadYouTubeApi() {
+  if (window.YT?.Player) return Promise.resolve(window.YT);
+  if (ytApiPromise) return ytApiPromise;
+
+  ytApiPromise = new Promise((resolve, reject) => {
+    const previousReady = window.onYouTubeIframeAPIReady;
+    window.onYouTubeIframeAPIReady = () => {
+      if (typeof previousReady === "function") previousReady();
+      resolve(window.YT);
+    };
+
+    const tag = document.createElement("script");
+    tag.src = "https://www.youtube.com/iframe_api";
+    tag.async = true;
+    tag.onerror = () => reject(new Error("Falha ao carregar YouTube IFrame API"));
+    document.head.appendChild(tag);
+  });
+
+  return ytApiPromise;
+}
+
+function playerMountForViewport() {
+  return window.innerWidth < 860 ? "mobileYoutubeMount" : "desktopYoutubeMount";
+}
+
+function showYouTubeSurface() {
+  document.body.classList.add("youtube-ready");
+  if (window.innerWidth < 860) {
+    els.desktopYoutubeDock.hidden = true;
+    openSheet();
+  } else {
+    els.desktopYoutubeDock.hidden = false;
+  }
+}
+
+function updateYouTubeLinks(track) {
+  const url = youtubeWatchUrl(track);
+  if (els.sheetYoutubeLink) els.sheetYoutubeLink.href = url;
+  if (els.desktopYoutubeLink) els.desktopYoutubeLink.href = url;
+}
+
+async function ensureYouTubePlayer() {
+  showYouTubeSurface();
+  await loadYouTubeApi();
+
+  const mountId = playerMountForViewport();
+  if (ytPlayer && ytMountId === mountId) return ytPlayerReady;
+
+  if (ytPlayer && typeof ytPlayer.destroy === "function") {
+    try { ytPlayer.destroy(); } catch {}
+    ytPlayer = null;
+  }
+
+  ytMountId = mountId;
+  const mount = document.getElementById(mountId);
+  if (!mount) throw new Error(`Mount do YouTube não encontrado: ${mountId}`);
+  mount.innerHTML = "";
+
+  ytPlayerReady = new Promise((resolve, reject) => {
+    const vars = {
+      playsinline: 1,
+      controls: 1,
+      rel: 0,
+      iv_load_policy: 3
+    };
+
+    ytPlayer = new YT.Player(mountId, {
+      width: "100%",
+      height: "100%",
+      playerVars: vars,
+      events: {
+        onReady: event => {
+          const savedVolume = Number(localStorage.getItem("trakify:volume"));
+          const volume = Number.isFinite(savedVolume) ? Math.round(savedVolume * 100) : 80;
+          event.target.setVolume(Math.max(0, Math.min(100, volume)));
+          resolve(event.target);
+        },
+        onStateChange: event => {
+          if (event.data === YT.PlayerState.PLAYING) {
+            state.isPlaying = true;
+            segmentTransitioning = false;
+            setPlayingIcons(true);
+            updateTrackRows();
+            startProgressTicker();
+          } else if (event.data === YT.PlayerState.PAUSED || event.data === YT.PlayerState.CUED) {
+            state.isPlaying = false;
+            setPlayingIcons(false);
+            updateTrackRows();
+          } else if (event.data === YT.PlayerState.ENDED) {
+            state.isPlaying = false;
+            setPlayingIcons(false);
+            updateTrackRows();
+            handleSegmentEnd();
+          }
+        },
+        onError: event => {
+          console.warn("YouTube Player error:", event.data);
+          state.isPlaying = false;
+          setPlayingIcons(false);
+          updateTrackRows();
+          showToast(event.data === 101 || event.data === 150
+            ? "Este vídeo não permite reprodução incorporada. Use 'Abrir no YouTube'."
+            : "O YouTube não conseguiu reproduzir esta fonte.");
+          reject?.(new Error(`YouTube error ${event.data}`));
+        }
+      }
+    });
+  });
+
+  return ytPlayerReady;
+}
+
+function segmentDuration(track = currentTrack()) {
+  if (!track) return 0;
+  if (Number.isFinite(track.end)) return Math.max(0, track.end - track.start);
+  if (ytPlayer?.getDuration) {
+    const total = Number(ytPlayer.getDuration());
+    if (Number.isFinite(total) && total > track.start) return total - track.start;
+  }
+  return 0;
+}
+
+function startProgressTicker() {
+  if (progressTimer) return;
+  progressTimer = setInterval(updatePlaybackProgress, 180);
+}
+
+function updatePlaybackProgress() {
+  const track = currentTrack();
+  if (!track || !ytPlayer?.getCurrentTime) return;
+
+  const raw = Number(ytPlayer.getCurrentTime());
+  if (!Number.isFinite(raw)) return;
+
+  const duration = segmentDuration(track);
+  const current = Math.max(0, raw - track.start);
+  const progress = duration > 0 ? Math.max(0, Math.min(1000, Math.round(current / duration * 1000))) : 0;
+
+  els.currentTime.textContent = fmt(current);
+  els.duration.textContent = duration > 0 ? fmt(duration) : (track.duration || "—");
+  els.sheetCurrentTime.textContent = fmt(current);
+  els.sheetDuration.textContent = duration > 0 ? fmt(duration) : (track.duration || "—");
+  els.seek.value = progress;
+  els.sheetSeek.value = progress;
+  els.miniProgress.style.width = `${progress / 10}%`;
+
+  // endSeconds deixa de valer após seekTo segundo a API; este limite mantém a faixa correta.
+  if (Number.isFinite(track.end) && raw >= track.end - .15 && !segmentTransitioning) {
+    handleSegmentEnd();
+  }
+}
+
+function handleSegmentEnd() {
+  if (segmentTransitioning || !state.currentId) return;
+  segmentTransitioning = true;
+  if (state.repeat) {
+    const track = currentTrack();
+    if (track && ytPlayer) {
+      ytPlayer.seekTo(track.start, true);
+      ytPlayer.playVideo();
+      setTimeout(() => { segmentTransitioning = false; }, 250);
+    }
+  } else {
+    step(1);
+  }
+}
+
 function playAlbum(id, disc = null) {
-  let tracks = state.tracks.filter(track => track.albumId === id && track.file);
+  let tracks = state.tracks.filter(track => track.albumId === id && track.youtube);
   if (disc) tracks = tracks.filter(track => track.disc === Number(disc));
   if (!tracks.length) return;
   playTrack(state.shuffle ? tracks[Math.floor(Math.random() * tracks.length)].id : tracks[0].id);
 }
 
-function playTrack(id) {
+async function playTrack(id) {
   const track = trackById(id);
-  if (!track?.file) {
-    showToast("Essa faixa ainda não tem arquivo configurado.");
+  if (!track?.youtube) {
+    showToast("Essa faixa ainda não tem fonte do YouTube configurada.");
     return;
   }
 
-  if (state.currentId !== id) {
+  const changed = state.currentId !== id;
+  if (changed) {
     state.currentId = id;
-    state.currentCandidates = audioUrls(track.file);
-    state.audioCandidateIndex = 0;
-    audio.src = state.currentCandidates[0];
     localStorage.setItem("trakify:lastPlayed", JSON.stringify(id));
     state.lastPlayed = id;
     updateNowPlaying(track);
     renderQuickCards();
   }
 
-  audio.play().catch(error => {
-    console.warn(error);
-    if (!tryNextAudioUrl()) {
-      showToast("O Google Drive não liberou esta faixa. Confira o compartilhamento.");
+  updateYouTubeLinks(track);
+  updateTrackRows();
+
+  try {
+    const player = await ensureYouTubePlayer();
+    if (!player) return;
+
+    if (!changed) {
+      player.playVideo();
+      return;
     }
-  });
 
-  rerenderVisibleLists();
+    const request = {
+      videoId: track.youtube,
+      startSeconds: track.start || 0
+    };
+    if (Number.isFinite(track.end)) request.endSeconds = track.end;
+    player.loadVideoById(request);
+  } catch (error) {
+    console.warn(error);
+    showToast("Não foi possível iniciar o player do YouTube.");
+  }
 }
 
-function tryNextAudioUrl() {
-  if (!state.currentId || state.audioCandidateIndex >= state.currentCandidates.length - 1) return false;
-  state.audioCandidateIndex += 1;
-  audio.src = state.currentCandidates[state.audioCandidateIndex];
-  audio.play().catch(console.warn);
-  return true;
-}
-
-function togglePlay() {
+async function togglePlay() {
   if (!state.currentId) {
-    const first = state.tracks.find(track => track.file);
+    const first = state.tracks.find(track => track.youtube);
     if (first) playTrack(first.id);
     return;
   }
-  if (audio.paused) audio.play().catch(() => {
-    if (!tryNextAudioUrl()) showToast("Não foi possível reproduzir esta faixa.");
-  });
-  else audio.pause();
+
+  try {
+    const player = await ensureYouTubePlayer();
+    const playerState = player.getPlayerState();
+    if (playerState === YT.PlayerState.PLAYING) player.pauseVideo();
+    else player.playVideo();
+  } catch (error) {
+    console.warn(error);
+  }
 }
 
 function step(direction) {
-  const list = queue().filter(track => track.file);
+  const list = queue().filter(track => track.youtube);
   if (!list.length) return;
 
   let index = list.findIndex(track => track.id === state.currentId);
@@ -605,6 +815,15 @@ function step(direction) {
   }
 
   playTrack(list[index].id);
+}
+
+function updateTrackRows() {
+  document.querySelectorAll("[data-track-row]").forEach(row => {
+    const active = row.dataset.trackRow === state.currentId;
+    row.classList.toggle("current", active);
+    const index = row.querySelector("[data-track-index]");
+    if (index) index.innerHTML = active && state.isPlaying ? icon("play", true) : esc(index.dataset.indexLabel || "");
+  });
 }
 
 function toggleFavorite(id) {
@@ -629,7 +848,7 @@ function updateFavoriteState() {
 
 function updateNowPlaying(track) {
   const cover = coverFor(track);
-  const coverHtml = cover ? `<img src="${esc(cover)}" alt="">` : "♫";
+  const coverHtml = imageMarkup(cover, coverFallbackFor(track), track.albumTitle);
 
   els.miniPlayer.hidden = false;
   els.miniCover.innerHTML = coverHtml;
@@ -692,6 +911,9 @@ function openSheet() {
 }
 
 function closeSheet() {
+  if (window.innerWidth < 860 && state.isPlaying && ytPlayer?.pauseVideo) {
+    ytPlayer.pauseVideo();
+  }
   els.nowPlayingSheet.classList.remove("open");
   els.nowPlayingSheet.setAttribute("aria-hidden", "true");
   document.body.style.overflow = "";
@@ -775,6 +997,7 @@ els.navItems.forEach(item => item.addEventListener("click", () => setView(item.d
 els.seeAlbumsBtn.addEventListener("click", () => setView("albums"));
 els.seeTracksBtn.addEventListener("click", () => setView("tracks"));
 els.albumBackBtn.addEventListener("click", backFromAlbum);
+els.albumBrandHome?.addEventListener("click", () => setView("home"));
 
 els.albumPlayBtn.addEventListener("click", () => {
   if (state.currentAlbumId) playAlbum(state.currentAlbumId);
@@ -834,69 +1057,45 @@ els.closeSheetBtn.addEventListener("click", closeSheet);
 els.sheetBackdrop.addEventListener("click", closeSheet);
 
 function seekFrom(input) {
-  if (audio.duration) audio.currentTime = Number(input.value) / 1000 * audio.duration;
+  const track = currentTrack();
+  if (!track || !ytPlayer?.seekTo) return;
+  const duration = segmentDuration(track);
+  if (!duration) return;
+  const target = track.start + (Number(input.value) / 1000 * duration);
+  ytPlayer.seekTo(target, true);
+  updatePlaybackProgress();
 }
 els.seek.addEventListener("input", () => seekFrom(els.seek));
 els.sheetSeek.addEventListener("input", () => seekFrom(els.sheetSeek));
 
-els.volume.addEventListener("input", () => {
-  audio.volume = Number(els.volume.value);
-  localStorage.setItem("trakify:volume", String(audio.volume));
-});
-
-audio.addEventListener("play", () => {
-  setPlayingIcons(true);
-  rerenderVisibleLists();
-});
-audio.addEventListener("pause", () => {
-  setPlayingIcons(false);
-  rerenderVisibleLists();
-});
-audio.addEventListener("loadedmetadata", () => {
-  els.duration.textContent = fmt(audio.duration);
-  els.sheetDuration.textContent = fmt(audio.duration);
-});
-audio.addEventListener("timeupdate", () => {
-  const progress = audio.duration ? Math.round(audio.currentTime / audio.duration * 1000) : 0;
-  els.currentTime.textContent = fmt(audio.currentTime);
-  els.duration.textContent = fmt(audio.duration);
-  els.sheetCurrentTime.textContent = fmt(audio.currentTime);
-  els.sheetDuration.textContent = fmt(audio.duration);
-  els.seek.value = progress;
-  els.sheetSeek.value = progress;
-  els.miniProgress.style.width = `${progress / 10}%`;
-});
-audio.addEventListener("ended", () => {
-  if (state.repeat) {
-    audio.currentTime = 0;
-    audio.play().catch(console.warn);
-  } else {
-    step(1);
-  }
-});
-audio.addEventListener("error", () => {
-  console.warn("Falha de áudio", audio.error);
-  if (!tryNextAudioUrl()) {
-    const track = currentTrack();
-    console.warn("Arquivo do Drive:", track?.file ? drivePreview(track.file) : "(sem arquivo)");
-    showToast("Drive bloqueou a faixa. Deixe o arquivo como 'Qualquer pessoa com o link'.");
-  }
-});
-
 const savedVolume = Number(localStorage.getItem("trakify:volume"));
-audio.volume = Number.isFinite(savedVolume) && savedVolume >= 0 && savedVolume <= 1 ? savedVolume : .8;
-els.volume.value = audio.volume;
+const initialVolume = Number.isFinite(savedVolume) && savedVolume >= 0 && savedVolume <= 1 ? savedVolume : .8;
+els.volume.value = initialVolume;
+els.volume.addEventListener("input", () => {
+  const value = Math.max(0, Math.min(1, Number(els.volume.value)));
+  localStorage.setItem("trakify:volume", String(value));
+  if (ytPlayer?.setVolume) ytPlayer.setVolume(Math.round(value * 100));
+});
 
 if ("mediaSession" in navigator) {
-  navigator.mediaSession.setActionHandler("play", () => audio.play());
-  navigator.mediaSession.setActionHandler("pause", () => audio.pause());
+  navigator.mediaSession.setActionHandler("play", () => togglePlay());
+  navigator.mediaSession.setActionHandler("pause", () => {
+    if (ytPlayer?.pauseVideo) ytPlayer.pauseVideo();
+  });
   navigator.mediaSession.setActionHandler("previoustrack", () => step(-1));
   navigator.mediaSession.setActionHandler("nexttrack", () => step(1));
   navigator.mediaSession.setActionHandler("seekbackward", details => {
-    audio.currentTime = Math.max(0, audio.currentTime - (details.seekOffset || 10));
+    const track = currentTrack();
+    if (!track || !ytPlayer?.seekTo) return;
+    const current = Number(ytPlayer.getCurrentTime?.() || track.start);
+    ytPlayer.seekTo(Math.max(track.start, current - (details.seekOffset || 10)), true);
   });
   navigator.mediaSession.setActionHandler("seekforward", details => {
-    audio.currentTime = Math.min(audio.duration || Infinity, audio.currentTime + (details.seekOffset || 10));
+    const track = currentTrack();
+    if (!track || !ytPlayer?.seekTo) return;
+    const current = Number(ytPlayer.getCurrentTime?.() || track.start);
+    const max = Number.isFinite(track.end) ? track.end - .2 : current + (details.seekOffset || 10);
+    ytPlayer.seekTo(Math.min(max, current + (details.seekOffset || 10)), true);
   });
 }
 
@@ -912,6 +1111,12 @@ document.addEventListener("keydown", event => {
 document.addEventListener("error", event => {
   const img = event.target;
   if (!(img instanceof HTMLImageElement)) return;
+  const fallback = img.dataset.fallbackSrc;
+  if (fallback && img.src !== fallback) {
+    img.dataset.fallbackSrc = "";
+    img.src = fallback;
+    return;
+  }
   const parent = img.parentElement;
   img.remove();
   if (parent && !parent.textContent.trim()) parent.textContent = "♫";
