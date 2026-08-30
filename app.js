@@ -573,16 +573,19 @@ function loadYouTubeApi() {
   if (ytApiPromise) return ytApiPromise;
 
   ytApiPromise = new Promise((resolve, reject) => {
+    let done = false;
+    const timer = setTimeout(() => { if (!done) { done = true; reject(new Error("Timeout da YouTube IFrame API")); } }, 5500);
     const previousReady = window.onYouTubeIframeAPIReady;
     window.onYouTubeIframeAPIReady = () => {
+      if (done) return;
+      done = true; clearTimeout(timer);
       if (typeof previousReady === "function") previousReady();
       resolve(window.YT);
     };
-
     const tag = document.createElement("script");
     tag.src = "https://www.youtube.com/iframe_api";
     tag.async = true;
-    tag.onerror = () => reject(new Error("Falha ao carregar YouTube IFrame API"));
+    tag.onerror = () => { if (!done) { done = true; clearTimeout(timer); reject(new Error("Falha ao carregar YouTube IFrame API")); } };
     document.head.appendChild(tag);
   });
 
@@ -668,10 +671,13 @@ async function ensureYouTubePlayer() {
           state.isPlaying = false;
           setPlayingIcons(false);
           updateTrackRows();
-          showToast(event.data === 101 || event.data === 150
-            ? "Este vídeo não permite reprodução incorporada. Use 'Abrir no YouTube'."
-            : "O YouTube não conseguiu reproduzir esta fonte.");
-          reject?.(new Error(`YouTube error ${event.data}`));
+          const track = currentTrack();
+          if (track?.driveFile) {
+            showToast("YouTube bloqueou o embed. Tentando Google Drive...");
+            playDriveTrack(track, true);
+          } else {
+            showToast("O YouTube não conseguiu reproduzir esta faixa.");
+          }
         }
       }
     });
@@ -680,13 +686,74 @@ async function ensureYouTubePlayer() {
   return ytPlayerReady;
 }
 
+
+let activeSource = "youtube";
+let driveCandidateIndex = 0;
+let driveToken = 0;
+const driveAudio = document.getElementById("driveAudio");
+const sheetSourceLabel = document.getElementById("sheetSourceLabel");
+const desktopSourceLabel = document.getElementById("desktopSourceLabel");
+
+function driveViewUrl(track) {
+  return track?.driveFile ? `https://drive.google.com/file/d/${encodeURIComponent(track.driveFile)}/view` : "https://drive.google.com/";
+}
+function driveCandidates(track) {
+  if (!track?.driveFile) return [];
+  const id = encodeURIComponent(track.driveFile);
+  return [
+    `https://drive.usercontent.google.com/download?id=${id}&export=download&confirm=t`,
+    `https://drive.google.com/uc?export=download&id=${id}&confirm=t`,
+    `https://drive.google.com/uc?export=download&id=${id}`
+  ];
+}
+function setActiveSource(source, track = currentTrack()) {
+  activeSource = source;
+  const drive = source === "drive";
+  const text = drive ? "Fonte: Google Drive" : "Fonte: YouTube";
+  const link = drive ? driveViewUrl(track) : youtubeWatchUrl(track);
+  if (sheetSourceLabel) sheetSourceLabel.textContent = text;
+  if (desktopSourceLabel) desktopSourceLabel.textContent = text;
+  if (els.sheetYoutubeLink) els.sheetYoutubeLink.href = link;
+  if (els.desktopYoutubeLink) els.desktopYoutubeLink.href = link;
+  document.body.classList.toggle("using-drive", drive);
+}
+function stopDrive() { if (driveAudio) { try { driveAudio.pause(); } catch {} } }
+function tryDrive(track, token) {
+  const urls = driveCandidates(track);
+  if (!driveAudio || token !== driveToken || driveCandidateIndex >= urls.length) {
+    state.isPlaying = false; setPlayingIcons(false); updateTrackRows();
+    showToast("Drive também bloqueou a faixa. Confira as permissões do arquivo.");
+    return;
+  }
+  driveAudio.src = urls[driveCandidateIndex++];
+  driveAudio.load();
+  const p = driveAudio.play();
+  p?.catch?.(() => { if (token === driveToken) tryDrive(track, token); });
+}
+function playDriveTrack(track, quiet = false) {
+  if (!track?.driveFile || !driveAudio) { if (!quiet) showToast("Sem fallback do Drive para esta faixa."); return; }
+  try { ytPlayer?.pauseVideo?.(); } catch {}
+  const token = ++driveToken;
+  driveCandidateIndex = 0;
+  setActiveSource("drive", track);
+  document.body.classList.remove("youtube-ready");
+  if (els.desktopYoutubeDock) els.desktopYoutubeDock.hidden = true;
+  tryDrive(track, token);
+}
+if (driveAudio) {
+  const saved = Number(localStorage.getItem("trakify:volume"));
+  driveAudio.volume = Number.isFinite(saved) ? Math.max(0,Math.min(1,saved)) : .8;
+  driveAudio.addEventListener("playing", () => { activeSource="drive"; state.isPlaying=true; setPlayingIcons(true); updateTrackRows(); startProgressTicker(); });
+  driveAudio.addEventListener("pause", () => { if (activeSource!=="drive") return; state.isPlaying=false; setPlayingIcons(false); updateTrackRows(); });
+  driveAudio.addEventListener("ended", () => { if (activeSource!=="drive") return; if (state.repeat) { driveAudio.currentTime=0; driveAudio.play().catch(()=>{}); } else step(1); });
+  driveAudio.addEventListener("error", () => { if (activeSource==="drive") { const t=currentTrack(); if (t) tryDrive(t, driveToken); } });
+}
+
 function segmentDuration(track = currentTrack()) {
   if (!track) return 0;
+  if (activeSource === "drive" && driveAudio && Number.isFinite(driveAudio.duration)) return Math.max(0, driveAudio.duration);
   if (Number.isFinite(track.end)) return Math.max(0, track.end - track.start);
-  if (ytPlayer?.getDuration) {
-    const total = Number(ytPlayer.getDuration());
-    if (Number.isFinite(total) && total > track.start) return total - track.start;
-  }
+  if (ytPlayer?.getDuration) { const total=Number(ytPlayer.getDuration()); if (Number.isFinite(total) && total>track.start) return total-track.start; }
   return 0;
 }
 
@@ -697,27 +764,20 @@ function startProgressTicker() {
 
 function updatePlaybackProgress() {
   const track = currentTrack();
-  if (!track || !ytPlayer?.getCurrentTime) return;
-
-  const raw = Number(ytPlayer.getCurrentTime());
-  if (!Number.isFinite(raw)) return;
-
+  if (!track) return;
   const duration = segmentDuration(track);
-  const current = Math.max(0, raw - track.start);
-  const progress = duration > 0 ? Math.max(0, Math.min(1000, Math.round(current / duration * 1000))) : 0;
-
-  els.currentTime.textContent = fmt(current);
-  els.duration.textContent = duration > 0 ? fmt(duration) : (track.duration || "—");
-  els.sheetCurrentTime.textContent = fmt(current);
-  els.sheetDuration.textContent = duration > 0 ? fmt(duration) : (track.duration || "—");
-  els.seek.value = progress;
-  els.sheetSeek.value = progress;
-  els.miniProgress.style.width = `${progress / 10}%`;
-
-  // endSeconds deixa de valer após seekTo segundo a API; este limite mantém a faixa correta.
-  if (Number.isFinite(track.end) && raw >= track.end - .15 && !segmentTransitioning) {
-    handleSegmentEnd();
+  let raw=0, current=0;
+  if (activeSource === "drive") {
+    raw = Number(driveAudio?.currentTime || 0); current = Math.max(0, raw);
+  } else {
+    if (!ytPlayer?.getCurrentTime) return;
+    raw = Number(ytPlayer.getCurrentTime()); if (!Number.isFinite(raw)) return; current = Math.max(0, raw-track.start);
   }
+  const progress = duration>0 ? Math.max(0,Math.min(1000,Math.round(current/duration*1000))) : 0;
+  els.currentTime.textContent=fmt(current); els.duration.textContent=duration>0?fmt(duration):(track.duration||"—");
+  els.sheetCurrentTime.textContent=fmt(current); els.sheetDuration.textContent=duration>0?fmt(duration):(track.duration||"—");
+  els.seek.value=progress; els.sheetSeek.value=progress; els.miniProgress.style.width=`${progress/10}%`;
+  if (activeSource!=="drive" && Number.isFinite(track.end) && raw>=track.end-.15 && !segmentTransitioning) handleSegmentEnd();
 }
 
 function handleSegmentEnd() {
@@ -743,60 +803,27 @@ function playAlbum(id, disc = null) {
 }
 
 async function playTrack(id) {
-  const track = trackById(id);
-  if (!track?.youtube) {
-    showToast("Essa faixa ainda não tem fonte do YouTube configurada.");
-    return;
-  }
-
+  const track = trackById(id); if (!track) return;
   const changed = state.currentId !== id;
-  if (changed) {
-    state.currentId = id;
-    localStorage.setItem("trakify:lastPlayed", JSON.stringify(id));
-    state.lastPlayed = id;
-    updateNowPlaying(track);
-    renderQuickCards();
+  if (changed) { state.currentId=id; localStorage.setItem("trakify:lastPlayed",JSON.stringify(id)); state.lastPlayed=id; updateNowPlaying(track); renderQuickCards(); }
+  updateYouTubeLinks(track); updateTrackRows(); stopDrive();
+  if (track.youtube) {
+    try {
+      setActiveSource("youtube", track);
+      const player = await ensureYouTubePlayer(); if (!player) throw new Error("YouTube indisponível");
+      const request={videoId:track.youtube,startSeconds:track.start||0}; if (Number.isFinite(track.end)) request.endSeconds=track.end;
+      player.loadVideoById(request); return;
+    } catch (e) { console.warn("YouTube falhou; Drive fallback:",e); }
   }
-
-  updateYouTubeLinks(track);
-  updateTrackRows();
-
-  try {
-    const player = await ensureYouTubePlayer();
-    if (!player) return;
-
-    if (!changed) {
-      player.playVideo();
-      return;
-    }
-
-    const request = {
-      videoId: track.youtube,
-      startSeconds: track.start || 0
-    };
-    if (Number.isFinite(track.end)) request.endSeconds = track.end;
-    player.loadVideoById(request);
-  } catch (error) {
-    console.warn(error);
-    showToast("Não foi possível iniciar o player do YouTube.");
-  }
+  if (track.driveFile) { showToast("Usando Google Drive como fallback."); playDriveTrack(track,true); }
+  else showToast("Nenhuma fonte disponível para esta faixa.");
 }
 
 async function togglePlay() {
-  if (!state.currentId) {
-    const first = state.tracks.find(track => track.youtube);
-    if (first) playTrack(first.id);
-    return;
-  }
-
-  try {
-    const player = await ensureYouTubePlayer();
-    const playerState = player.getPlayerState();
-    if (playerState === YT.PlayerState.PLAYING) player.pauseVideo();
-    else player.playVideo();
-  } catch (error) {
-    console.warn(error);
-  }
+  if (!state.currentId) { const first=state.tracks[0]; if(first) playTrack(first.id); return; }
+  if (activeSource === "drive" && driveAudio) { if (driveAudio.paused) driveAudio.play().catch(()=>{}); else driveAudio.pause(); return; }
+  try { const p=await ensureYouTubePlayer(); if (p.getPlayerState()===YT.PlayerState.PLAYING) p.pauseVideo(); else p.playVideo(); }
+  catch(e) { const t=currentTrack(); if(t?.driveFile) playDriveTrack(t,true); }
 }
 
 function step(direction) {
@@ -911,9 +938,6 @@ function openSheet() {
 }
 
 function closeSheet() {
-  if (window.innerWidth < 860 && state.isPlaying && ytPlayer?.pauseVideo) {
-    ytPlayer.pauseVideo();
-  }
   els.nowPlayingSheet.classList.remove("open");
   els.nowPlayingSheet.setAttribute("aria-hidden", "true");
   document.body.style.overflow = "";
@@ -923,22 +947,14 @@ let revealObserver;
 function observeReveals() {
   const items = [...document.querySelectorAll(".reveal-item:not(.is-visible)")];
   if (!items.length) return;
-
-  if (!("IntersectionObserver" in window)) {
-    items.forEach(item => item.classList.add("is-visible"));
-    return;
-  }
-
+  if (!("IntersectionObserver" in window)) { items.forEach(item => item.classList.add("is-visible")); return; }
+  items.forEach(item => item.classList.add("reveal-ready"));
   revealObserver ||= new IntersectionObserver(entries => {
     entries.forEach(entry => {
-      if (entry.isIntersecting) {
-        entry.target.classList.add("is-visible");
-        revealObserver.unobserve(entry.target);
-      }
+      if (entry.isIntersecting) { entry.target.classList.add("is-visible"); revealObserver.unobserve(entry.target); }
     });
-  }, { rootMargin: "50px 0px -20px", threshold: .04 });
-
-  items.forEach(item => revealObserver.observe(item));
+  }, { rootMargin: "80px 0px 20px", threshold: .01 });
+  items.forEach(item => { revealObserver.observe(item); setTimeout(() => item.classList.add("is-visible"), 700); });
 }
 
 /* Delegated interactions */
@@ -1057,12 +1073,9 @@ els.closeSheetBtn.addEventListener("click", closeSheet);
 els.sheetBackdrop.addEventListener("click", closeSheet);
 
 function seekFrom(input) {
-  const track = currentTrack();
-  if (!track || !ytPlayer?.seekTo) return;
-  const duration = segmentDuration(track);
-  if (!duration) return;
-  const target = track.start + (Number(input.value) / 1000 * duration);
-  ytPlayer.seekTo(target, true);
+  const track=currentTrack(); if(!track) return; const duration=segmentDuration(track); if(!duration) return;
+  if(activeSource==="drive" && driveAudio) driveAudio.currentTime=Number(input.value)/1000*duration;
+  else if(ytPlayer?.seekTo) ytPlayer.seekTo(track.start+(Number(input.value)/1000*duration),true);
   updatePlaybackProgress();
 }
 els.seek.addEventListener("input", () => seekFrom(els.seek));
@@ -1075,6 +1088,7 @@ els.volume.addEventListener("input", () => {
   const value = Math.max(0, Math.min(1, Number(els.volume.value)));
   localStorage.setItem("trakify:volume", String(value));
   if (ytPlayer?.setVolume) ytPlayer.setVolume(Math.round(value * 100));
+  if (driveAudio) driveAudio.volume = value;
 });
 
 if ("mediaSession" in navigator) {

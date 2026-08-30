@@ -79,3 +79,8 @@ A interface usa **Flaticon UIcons** via CDN. Mantenha a atribuição já present
 ## Observação
 
 A disponibilidade de reprodução depende de o vídeo permitir incorporação no YouTube. Se um vídeo bloquear embeds, o Trakify mostra um botão para abrir aquela faixa diretamente no YouTube.
+
+
+## v1.5 — Hybrid
+
+O catálogo foi embutido no `index.html`, então o álbum não depende de `fetch()` para aparecer. Cada faixa tenta o YouTube primeiro e, se o embed/API falhar, usa o arquivo individual do Google Drive como fallback. Foram preservados os 22 IDs de Drive já cadastrados. O Drive precisa manter os arquivos em `Qualquer pessoa com o link` e com download permitido.
