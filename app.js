@@ -112,10 +112,16 @@ function driveImage(id, size = 1200) {
 }
 
 function audioUrls(file) {
+  const id = encodeURIComponent(file);
   return [
-    `https://drive.google.com/uc?export=download&id=${encodeURIComponent(file)}`,
-    `https://drive.usercontent.google.com/download?id=${encodeURIComponent(file)}&export=download&confirm=t`
+    `https://drive.usercontent.google.com/download?id=${id}&export=download&confirm=t`,
+    `https://drive.google.com/uc?export=download&id=${id}`,
+    `https://drive.google.com/uc?id=${id}&export=download`
   ];
+}
+
+function drivePreview(file) {
+  return `https://drive.google.com/file/d/${encodeURIComponent(file)}/view`;
 }
 
 function fmt(seconds) {
@@ -169,9 +175,14 @@ function flattenLibrary(data) {
 
 async function loadLibrary() {
   try {
-    const response = await fetch("data/library.json", { cache: "no-store" });
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    const data = await response.json();
+    let data = window.TRAKIFY_LIBRARY || null;
+
+    // Fallback para quem preferir editar somente o JSON.
+    if (!data) {
+      const response = await fetch("data/library.json", { cache: "no-store" });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      data = await response.json();
+    }
 
     state.albums = data.albums || [];
     state.tracks = flattenLibrary(data);
@@ -179,9 +190,13 @@ async function loadLibrary() {
     renderAll();
     setWelcome();
     setView("home", { pushHistory: false });
+
+    if (!state.albums.length) {
+      showToast("A biblioteca está vazia.");
+    }
   } catch (error) {
     console.error(error);
-    showToast("Não foi possível carregar data/library.json.");
+    showToast("Não foi possível carregar a biblioteca do Trakify.");
   }
 }
 
@@ -862,7 +877,9 @@ audio.addEventListener("ended", () => {
 audio.addEventListener("error", () => {
   console.warn("Falha de áudio", audio.error);
   if (!tryNextAudioUrl()) {
-    showToast("O Google Drive não entregou essa faixa ao player.");
+    const track = currentTrack();
+    console.warn("Arquivo do Drive:", track?.file ? drivePreview(track.file) : "(sem arquivo)");
+    showToast("Drive bloqueou a faixa. Deixe o arquivo como 'Qualquer pessoa com o link'.");
   }
 });
 
@@ -891,5 +908,13 @@ document.addEventListener("keydown", event => {
   }
   if (event.code === "Escape") closeSheet();
 });
+
+document.addEventListener("error", event => {
+  const img = event.target;
+  if (!(img instanceof HTMLImageElement)) return;
+  const parent = img.parentElement;
+  img.remove();
+  if (parent && !parent.textContent.trim()) parent.textContent = "♫";
+}, true);
 
 loadLibrary();

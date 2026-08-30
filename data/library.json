@@ -5,8 +5,8 @@
       "title": "Graduation (Ultimate Edition)",
       "artist": "Various Artists",
       "subtitle": "Ultimate Edition",
-      "cover": "1yfMbyRzUHe3wH-hJGPwv8MqobxDqDihp",
-      "banner": "1eitkFfMOYicE-ODXpnVTjmY1MSehzjMb",
+      "cover": "1eitkFfMOYicE-ODXpnVTjmY1MSehzjMb",
+      "banner": "1yfMbyRzUHe3wH-hJGPwv8MqobxDqDihp",
       "fallbackAccent": "#d96bb6",
       "discs": [
         {
@@ -149,7 +149,8 @@
             }
           ]
         }
-      ]
+      ],
+      "driveFolder": "1weYec2Y-Q0eUnaIsH0Qy2Wbj7QUYJ9CR"
     }
   ]
 }
