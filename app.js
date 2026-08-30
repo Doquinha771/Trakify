@@ -671,13 +671,7 @@ async function ensureYouTubePlayer() {
           state.isPlaying = false;
           setPlayingIcons(false);
           updateTrackRows();
-          const track = currentTrack();
-          if (track?.driveFile) {
-            showToast("YouTube bloqueou o embed. Tentando Google Drive...");
-            playDriveTrack(track, true);
-          } else {
-            showToast("O YouTube não conseguiu reproduzir esta faixa.");
-          }
+          showToast("Drive e YouTube não conseguiram reproduzir esta faixa.");
         }
       }
     });
@@ -687,9 +681,10 @@ async function ensureYouTubePlayer() {
 }
 
 
-let activeSource = "youtube";
+let activeSource = "drive";
 let driveCandidateIndex = 0;
 let driveToken = 0;
+let driveAttemptTimer = null;
 const driveAudio = document.getElementById("driveAudio");
 const sheetSourceLabel = document.getElementById("sheetSourceLabel");
 const desktopSourceLabel = document.getElementById("desktopSourceLabel");
@@ -702,40 +697,71 @@ function driveCandidates(track) {
   const id = encodeURIComponent(track.driveFile);
   return [
     `https://drive.usercontent.google.com/download?id=${id}&export=download&confirm=t`,
+    `https://drive.usercontent.google.com/uc?id=${id}&export=download&confirm=t`,
     `https://drive.google.com/uc?export=download&id=${id}&confirm=t`,
-    `https://drive.google.com/uc?export=download&id=${id}`
+    `https://drive.google.com/uc?export=download&id=${id}`,
+    `https://drive.google.com/uc?id=${id}&export=download`
   ];
 }
 function setActiveSource(source, track = currentTrack()) {
   activeSource = source;
   const drive = source === "drive";
-  const text = drive ? "Fonte: Google Drive" : "Fonte: YouTube";
-  const link = drive ? driveViewUrl(track) : youtubeWatchUrl(track);
+  const pending = source === "drive-loading";
+  const text = pending ? "Conectando ao Google Drive…" : drive ? "Fonte: Google Drive" : "Fonte alternativa: YouTube";
+  const link = (drive || pending) ? driveViewUrl(track) : youtubeWatchUrl(track);
   if (sheetSourceLabel) sheetSourceLabel.textContent = text;
   if (desktopSourceLabel) desktopSourceLabel.textContent = text;
   if (els.sheetYoutubeLink) els.sheetYoutubeLink.href = link;
   if (els.desktopYoutubeLink) els.desktopYoutubeLink.href = link;
-  document.body.classList.toggle("using-drive", drive);
+  document.body.classList.toggle("using-drive", drive || pending);
 }
-function stopDrive() { if (driveAudio) { try { driveAudio.pause(); } catch {} } }
+function stopDrive() {
+  if (driveAttemptTimer) clearTimeout(driveAttemptTimer);
+  driveAttemptTimer = null;
+  if (driveAudio) {
+    try { driveAudio.pause(); } catch {}
+    driveAudio.removeAttribute("src");
+    try { driveAudio.load(); } catch {}
+  }
+}
+function fallbackToYouTube(track, token, reason = "") {
+  if (token !== driveToken || currentTrack()?.id !== track.id) return;
+  if (driveAttemptTimer) clearTimeout(driveAttemptTimer);
+  driveAttemptTimer = null;
+  console.warn("Google Drive indisponível; usando YouTube:", reason || "fontes esgotadas");
+  showToast("Drive indisponível nesta faixa. Usando YouTube.");
+  playYouTubeTrack(track);
+}
 function tryDrive(track, token) {
   const urls = driveCandidates(track);
   if (!driveAudio || token !== driveToken || driveCandidateIndex >= urls.length) {
-    state.isPlaying = false; setPlayingIcons(false); updateTrackRows();
-    showToast("Drive também bloqueou a faixa. Confira as permissões do arquivo.");
+    fallbackToYouTube(track, token, "todas as URLs falharam");
     return;
   }
+  if (driveAttemptTimer) clearTimeout(driveAttemptTimer);
+  setActiveSource("drive-loading", track);
   driveAudio.src = urls[driveCandidateIndex++];
+  const attemptIndex = driveCandidateIndex;
   driveAudio.load();
-  const p = driveAudio.play();
-  p?.catch?.(() => { if (token === driveToken) tryDrive(track, token); });
+  driveAttemptTimer = setTimeout(() => {
+    if (token === driveToken && activeSource === "drive-loading") tryDrive(track, token);
+  }, 7000);
+  const begin = () => {
+    if (token !== driveToken || driveCandidateIndex !== attemptIndex || activeSource !== "drive-loading") return;
+    if (driveAttemptTimer) clearTimeout(driveAttemptTimer);
+    driveAttemptTimer = null;
+    setActiveSource("drive", track);
+    driveAudio.play().catch(error => fallbackToYouTube(track, token, error?.message));
+  };
+  if (driveAudio.readyState >= HTMLMediaElement.HAVE_METADATA) begin();
+  else driveAudio.addEventListener("loadedmetadata", begin, { once: true });
 }
 function playDriveTrack(track, quiet = false) {
-  if (!track?.driveFile || !driveAudio) { if (!quiet) showToast("Sem fallback do Drive para esta faixa."); return; }
+  if (!track?.driveFile || !driveAudio) { if (!quiet) showToast("Faixa sem arquivo no Drive. Usando YouTube."); playYouTubeTrack(track); return; }
   try { ytPlayer?.pauseVideo?.(); } catch {}
   const token = ++driveToken;
   driveCandidateIndex = 0;
-  setActiveSource("drive", track);
+  setActiveSource("drive-loading", track);
   document.body.classList.remove("youtube-ready");
   if (els.desktopYoutubeDock) els.desktopYoutubeDock.hidden = true;
   tryDrive(track, token);
@@ -746,7 +772,7 @@ if (driveAudio) {
   driveAudio.addEventListener("playing", () => { activeSource="drive"; state.isPlaying=true; setPlayingIcons(true); updateTrackRows(); startProgressTicker(); });
   driveAudio.addEventListener("pause", () => { if (activeSource!=="drive") return; state.isPlaying=false; setPlayingIcons(false); updateTrackRows(); });
   driveAudio.addEventListener("ended", () => { if (activeSource!=="drive") return; if (state.repeat) { driveAudio.currentTime=0; driveAudio.play().catch(()=>{}); } else step(1); });
-  driveAudio.addEventListener("error", () => { if (activeSource==="drive") { const t=currentTrack(); if (t) tryDrive(t, driveToken); } });
+  driveAudio.addEventListener("error", () => { if (activeSource==="drive" || activeSource==="drive-loading") { const t=currentTrack(); if (t) tryDrive(t, driveToken); } });
 }
 
 function segmentDuration(track = currentTrack()) {
@@ -796,38 +822,51 @@ function handleSegmentEnd() {
 }
 
 function playAlbum(id, disc = null) {
-  let tracks = state.tracks.filter(track => track.albumId === id && track.youtube);
+  let tracks = state.tracks.filter(track => track.albumId === id && (track.driveFile || track.youtube));
   if (disc) tracks = tracks.filter(track => track.disc === Number(disc));
   if (!tracks.length) return;
   playTrack(state.shuffle ? tracks[Math.floor(Math.random() * tracks.length)].id : tracks[0].id);
+}
+
+async function playYouTubeTrack(track) {
+  if (!track?.youtube) {
+    state.isPlaying = false; setPlayingIcons(false); updateTrackRows();
+    showToast("Nenhuma fonte reproduzível para esta faixa.");
+    return;
+  }
+  try {
+    setActiveSource("youtube", track);
+    const player = await ensureYouTubePlayer();
+    if (!player || currentTrack()?.id !== track.id) return;
+    const request={videoId:track.youtube,startSeconds:track.start||0};
+    if (Number.isFinite(track.end)) request.endSeconds=track.end;
+    player.loadVideoById(request);
+  } catch (error) {
+    console.warn("YouTube também falhou:", error);
+    state.isPlaying = false; setPlayingIcons(false); updateTrackRows();
+    showToast("Drive e YouTube não conseguiram reproduzir esta faixa.");
+  }
 }
 
 async function playTrack(id) {
   const track = trackById(id); if (!track) return;
   const changed = state.currentId !== id;
   if (changed) { state.currentId=id; localStorage.setItem("trakify:lastPlayed",JSON.stringify(id)); state.lastPlayed=id; updateNowPlaying(track); renderQuickCards(); }
-  updateYouTubeLinks(track); updateTrackRows(); stopDrive();
-  if (track.youtube) {
-    try {
-      setActiveSource("youtube", track);
-      const player = await ensureYouTubePlayer(); if (!player) throw new Error("YouTube indisponível");
-      const request={videoId:track.youtube,startSeconds:track.start||0}; if (Number.isFinite(track.end)) request.endSeconds=track.end;
-      player.loadVideoById(request); return;
-    } catch (e) { console.warn("YouTube falhou; Drive fallback:",e); }
-  }
-  if (track.driveFile) { showToast("Usando Google Drive como fallback."); playDriveTrack(track,true); }
-  else showToast("Nenhuma fonte disponível para esta faixa.");
+  updateYouTubeLinks(track); updateTrackRows(); ++driveToken; stopDrive();
+  if (track.driveFile) playDriveTrack(track, true);
+  else playYouTubeTrack(track);
 }
 
 async function togglePlay() {
   if (!state.currentId) { const first=state.tracks[0]; if(first) playTrack(first.id); return; }
+  if (activeSource === "drive-loading") { showToast("Carregando a faixa pelo Google Drive…"); return; }
   if (activeSource === "drive" && driveAudio) { if (driveAudio.paused) driveAudio.play().catch(()=>{}); else driveAudio.pause(); return; }
   try { const p=await ensureYouTubePlayer(); if (p.getPlayerState()===YT.PlayerState.PLAYING) p.pauseVideo(); else p.playVideo(); }
   catch(e) { const t=currentTrack(); if(t?.driveFile) playDriveTrack(t,true); }
 }
 
 function step(direction) {
-  const list = queue().filter(track => track.youtube);
+  const list = queue().filter(track => track.driveFile || track.youtube);
   if (!list.length) return;
 
   let index = list.findIndex(track => track.id === state.currentId);
@@ -1094,19 +1133,30 @@ els.volume.addEventListener("input", () => {
 if ("mediaSession" in navigator) {
   navigator.mediaSession.setActionHandler("play", () => togglePlay());
   navigator.mediaSession.setActionHandler("pause", () => {
-    if (ytPlayer?.pauseVideo) ytPlayer.pauseVideo();
+    if (activeSource === "drive") driveAudio?.pause();
+    else if (ytPlayer?.pauseVideo) ytPlayer.pauseVideo();
   });
   navigator.mediaSession.setActionHandler("previoustrack", () => step(-1));
   navigator.mediaSession.setActionHandler("nexttrack", () => step(1));
   navigator.mediaSession.setActionHandler("seekbackward", details => {
     const track = currentTrack();
-    if (!track || !ytPlayer?.seekTo) return;
+    if (!track) return;
+    if (activeSource === "drive" && driveAudio) {
+      driveAudio.currentTime = Math.max(0, driveAudio.currentTime - (details.seekOffset || 10));
+      return;
+    }
+    if (!ytPlayer?.seekTo) return;
     const current = Number(ytPlayer.getCurrentTime?.() || track.start);
     ytPlayer.seekTo(Math.max(track.start, current - (details.seekOffset || 10)), true);
   });
   navigator.mediaSession.setActionHandler("seekforward", details => {
     const track = currentTrack();
-    if (!track || !ytPlayer?.seekTo) return;
+    if (!track) return;
+    if (activeSource === "drive" && driveAudio) {
+      driveAudio.currentTime = Math.min(driveAudio.duration || Infinity, driveAudio.currentTime + (details.seekOffset || 10));
+      return;
+    }
+    if (!ytPlayer?.seekTo) return;
     const current = Number(ytPlayer.getCurrentTime?.() || track.start);
     const max = Number.isFinite(track.end) ? track.end - .2 : current + (details.seekOffset || 10);
     ytPlayer.seekTo(Math.min(max, current + (details.seekOffset || 10)), true);

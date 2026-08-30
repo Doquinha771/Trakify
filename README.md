@@ -1,6 +1,6 @@
 # Trakify
 
-Player musical mobile-first para GitHub Pages. A versão 1.4 usa o **YouTube IFrame Player API** como fonte de reprodução: cada disco aponta para um vídeo longo e cada faixa define apenas o segundo em que começa.
+Player musical mobile-first para GitHub Pages. A versão 1.6 prioriza os arquivos individuais do **Google Drive** e usa a **YouTube IFrame Player API** automaticamente quando o Drive não consegue entregar uma faixa.
 
 ## Graduation (Ultimate Edition)
 
@@ -39,15 +39,15 @@ A configuração fica em `data/library.json`:
 
 O fim de uma faixa é calculado automaticamente pelo início da próxima. A última faixa de cada disco usa a duração real informada pelo player do YouTube.
 
-## Player do YouTube
+## Reprodução híbrida
 
-O vídeo incorporado permanece visível enquanto toca:
+O Drive é sempre a fonte principal. Quando o fallback do YouTube é necessário, o vídeo incorporado fica visível:
 
 - no celular, ele aparece no player em tela cheia;
 - no desktop, aparece em um dock acima do player inferior;
 - fechar o player em tela cheia no celular pausa o vídeo.
 
-Isso mantém a reprodução usando o player oficial do YouTube, em vez de extrair ou baixar o áudio.
+O app não extrai nem baixa áudio do YouTube: o fallback usa o player oficial.
 
 ## Rodar localmente
 
@@ -81,6 +81,8 @@ A interface usa **Flaticon UIcons** via CDN. Mantenha a atribuição já present
 A disponibilidade de reprodução depende de o vídeo permitir incorporação no YouTube. Se um vídeo bloquear embeds, o Trakify mostra um botão para abrir aquela faixa diretamente no YouTube.
 
 
-## v1.5 — Hybrid
+## v1.6 — Drive First
 
-O catálogo foi embutido no `index.html`, então o álbum não depende de `fetch()` para aparecer. Cada faixa tenta o YouTube primeiro e, se o embed/API falhar, usa o arquivo individual do Google Drive como fallback. Foram preservados os 22 IDs de Drive já cadastrados. O Drive precisa manter os arquivos em `Qualquer pessoa com o link` e com download permitido.
+O catálogo foi embutido no `index.html`, então o álbum não depende de `fetch()` para aparecer. Cada faixa tenta primeiro o arquivo individual do Google Drive. O player testa rotas públicas alternativas do próprio Drive e, se elas forem bloqueadas, expirarem ou demorarem demais, muda automaticamente para o trecho correspondente no YouTube. Foram preservados os 22 IDs já cadastrados.
+
+Para o Drive funcionar, cada arquivo precisa estar em **Qualquer pessoa com o link**, sem exigir login, e permitir download. Arquivos que excederem a cota pública do Google, estiverem bloqueados por política ou usarem um codec incompatível com o navegador cairão no YouTube automaticamente.
