@@ -109,18 +109,22 @@ const esc = (value = "") => String(value).replace(/[&<>"']/g, c => ({
   "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;"
 }[c]));
 
-function driveImage(id, size = 1200) {
-  return id ? `https://drive.google.com/thumbnail?id=${encodeURIComponent(id)}&sz=w${size}` : "";
-}
-
-function youtubeThumb(videoId, quality = "hqdefault") {
-  return videoId ? `https://i.ytimg.com/vi/${encodeURIComponent(videoId)}/${quality}.jpg` : "";
-}
-
-function imageMarkup(primary, fallback, alt = "") {
+function imageMarkup(primary = "", fallback = "", alt = "") {
   const src = primary || fallback;
-  if (!src) return "♫";
-  return `<img src="${esc(src)}" ${fallback && fallback !== src ? `data-fallback-src="${esc(fallback)}"` : ""} alt="${esc(alt)}" draggable="false" decoding="async">`;
+  if (!src) return `<span class="local-art-symbol" aria-label="${esc(alt || "Música")}">♫</span>`;
+  return `<img src="${esc(src)}" alt="${esc(alt)}" draggable="false" decoding="async">`;
+}
+
+function coverFor() {
+  return "";
+}
+
+function coverFallbackFor() {
+  return "";
+}
+
+function albumFallbackImage() {
+  return "";
 }
 
 function fmt(seconds) {
@@ -148,33 +152,14 @@ function trackById(id) {
   return state.tracks.find(track => track.id === id) || null;
 }
 
-function albumFallbackImage(album) {
-  return youtubeThumb(album?.discs?.[0]?.youtube, "hqdefault");
-}
-
-function coverFor(track) {
-  return driveImage(albumById(track?.albumId)?.cover, 600);
-}
-
-function coverFallbackFor(track) {
-  return youtubeThumb(track?.youtube, "hqdefault");
-}
-
 function flattenLibrary(data) {
   const tracks = [];
   (data.albums || []).forEach(album => {
     (album.discs || []).forEach((disc, discIndex) => {
-      const discTracks = disc.tracks || [];
-      discTracks.forEach((track, trackIndex) => {
-        const start = Number(track.start || 0);
-        const nextStart = trackIndex < discTracks.length - 1 ? Number(discTracks[trackIndex + 1].start) : null;
-        const end = Number.isFinite(nextStart) ? nextStart : null;
+      (disc.tracks || []).forEach((track, trackIndex) => {
         tracks.push({
           ...track,
-          youtube: disc.youtube,
-          start,
-          end,
-          duration: end !== null ? fmt(end - start) : (track.duration || ""),
+          duration: track.duration || "",
           id: `${album.id}-d${discIndex + 1}-t${trackIndex + 1}`,
           albumId: album.id,
           albumTitle: album.title,
@@ -240,19 +225,16 @@ function renderFeatured() {
     return;
   }
 
-  const banner = driveImage(album.banner, 1800);
-  const fallback = albumFallbackImage(album);
-  const cover = driveImage(album.cover, 700);
   const count = state.tracks.filter(t => t.albumId === album.id).length;
 
   els.featuredSection.innerHTML = `
     <article class="featured-card reveal-item" data-open-album="${esc(album.id)}">
-      <div class="featured-banner" style="background-image:url('${esc(banner)}'),url('${esc(fallback)}')"></div>
+      <div class="featured-banner local-featured-art"></div>
       <button class="featured-play" data-play-album="${esc(album.id)}" aria-label="Tocar ${esc(album.title)}">
         ${icon("play", true)}
       </button>
       <div class="featured-content">
-        <div class="featured-cover">${imageMarkup(cover, fallback, album.title)}</div>
+        <div class="featured-cover">${imageMarkup("", "", album.title)}</div>
         <div class="featured-copy">
           <p>EM DESTAQUE</p>
           <h2>${esc(album.title)}</h2>
@@ -264,7 +246,7 @@ function renderFeatured() {
 
 function renderQuickCards() {
   const album = state.albums[0];
-  const cover = album ? driveImage(album.cover, 500) : "";
+  const cover = "";
   const discs = album?.discs || [];
 
   const cards = [
@@ -310,11 +292,9 @@ function renderQuickCards() {
 }
 
 function albumCard(album, i = 0) {
-  const cover = driveImage(album.cover, 650);
-  const fallback = albumFallbackImage(album);
   return `
     <button class="album-card reveal-item" data-open-album="${esc(album.id)}" style="--delay:${i * 60}ms">
-      <span class="album-art">${imageMarkup(cover, fallback, album.title)}</span>
+      <span class="album-art">${imageMarkup("", "", album.title)}</span>
       <h3>${esc(album.title)}</h3>
       <p>${esc(album.artist)}</p>
     </button>`;
@@ -420,18 +400,14 @@ function renderAlbum(id) {
 
   state.currentAlbumId = id;
   const tracks = state.tracks.filter(track => track.albumId === id);
-  const cover = driveImage(album.cover, 900);
-  const banner = driveImage(album.banner, 1900);
-  const fallback = albumFallbackImage(album);
-
-  els.albumBanner.style.backgroundImage = `url("${banner}"), url("${fallback}")`;
-  els.albumCover.innerHTML = imageMarkup(cover, fallback, album.title);
+  els.albumBanner.style.backgroundImage = "none";
+  els.albumBanner.classList.add("local-album-art");
+  els.albumCover.innerHTML = imageMarkup("", "", album.title);
   els.albumTitle.textContent = album.title;
   els.albumMeta.textContent = `${album.artist} · ${tracks.length} faixas${album.subtitle ? ` · ${album.subtitle}` : ""}`;
   renderTrackList(els.albumTrackList, tracks, { discHeaders: true, useTrackNumber: true });
 
   setTheme(album.fallbackAccent || "#d96bb6");
-  extractImageTheme(banner || fallback, album.fallbackAccent || "#d96bb6", fallback);
   updateNavActive(null);
 }
 
@@ -451,49 +427,6 @@ function hexToRgb(hex) {
     g: parseInt(match[2], 16),
     b: parseInt(match[3], 16)
   } : null;
-}
-
-function extractImageTheme(url, fallback, fallbackUrl = "") {
-  const img = new Image();
-  img.crossOrigin = "anonymous";
-  img.src = url;
-  img.onload = () => {
-    try {
-      const canvas = document.createElement("canvas");
-      canvas.width = 48;
-      canvas.height = 48;
-      const ctx = canvas.getContext("2d", { willReadFrequently: true });
-      ctx.drawImage(img, 0, 0, 48, 48);
-      const data = ctx.getImageData(0, 0, 48, 48).data;
-
-      let best = null;
-      for (let i = 0; i < data.length; i += 16) {
-        const r = data[i], g = data[i+1], b = data[i+2], a = data[i+3];
-        if (a < 220) continue;
-        const max = Math.max(r,g,b), min = Math.min(r,g,b);
-        const saturation = max - min;
-        const brightness = (r + g + b) / 3;
-        if (brightness < 45 || brightness > 225 || saturation < 28) continue;
-
-        const score = saturation + (180 - Math.abs(brightness - 145)) * .25;
-        if (!best || score > best.score) best = { r,g,b,score };
-      }
-
-      if (best) {
-        const boost = 1.08;
-        const r = Math.min(235, Math.round(best.r * boost));
-        const g = Math.min(235, Math.round(best.g * boost));
-        const b = Math.min(235, Math.round(best.b * boost));
-        setTheme(`#${[r,g,b].map(v => v.toString(16).padStart(2,"0")).join("")}`);
-      }
-    } catch {
-      setTheme(fallback);
-    }
-  };
-  img.onerror = () => {
-    if (fallbackUrl && fallbackUrl !== url) extractImageTheme(fallbackUrl, fallback, "");
-    else setTheme(fallback);
-  };
 }
 
 function setView(view, options = {}) {
@@ -597,9 +530,16 @@ function playLocalTrack(track, token) {
   }
 
   setActiveSource("local-loading");
-  audioPlayer.src = track.localFile;
-  audioPlayer.load();
+  let localUrl;
+  try {
+    localUrl = new URL(track.localFile, document.baseURI).href;
+  } catch {
+    playbackUnavailable(track, token, "caminho local inválido");
+    return;
+  }
 
+  audioPlayer.preload = "auto";
+  audioPlayer.src = localUrl;
   const playPromise = audioPlayer.play();
   if (playPromise?.catch) {
     playPromise.catch(error => {
@@ -644,7 +584,11 @@ if (audioPlayer) {
   audioPlayer.addEventListener("error", () => {
     const track = currentTrack();
     if (!track || !["local", "local-loading"].includes(activeSource)) return;
-    playbackUnavailable(track, playbackToken, "erro ao carregar o MP3 local");
+    let expected = "";
+    try { expected = new URL(track.localFile, document.baseURI).href; } catch {}
+    if (expected && audioPlayer.currentSrc && audioPlayer.currentSrc !== expected) return;
+    const code = audioPlayer.error?.code ? ` (código ${audioPlayer.error.code})` : "";
+    playbackUnavailable(track, playbackToken, `erro ao carregar o MP3 local${code}`);
   });
 }
 
@@ -726,8 +670,8 @@ async function playTrack(id) {
   setPlayingIcons(false);
   updateTrackRows();
 
-  const token = ++playbackToken;
   resetAudio();
+  const token = ++playbackToken;
   playLocalTrack(track, token);
 }
 
@@ -806,8 +750,7 @@ function updateFavoriteState() {
 }
 
 function updateNowPlaying(track) {
-  const cover = coverFor(track);
-  const coverHtml = imageMarkup(cover, coverFallbackFor(track), track.albumTitle);
+  const coverHtml = imageMarkup("", "", track.albumTitle);
 
   els.miniPlayer.hidden = false;
   els.miniCover.innerHTML = coverHtml;
@@ -830,8 +773,7 @@ function updateNowPlaying(track) {
     navigator.mediaSession.metadata = new MediaMetadata({
       title: track.title,
       artist: track.artist,
-      album: track.albumTitle,
-      artwork: cover ? [{ src: cover }] : []
+      album: track.albumTitle
     });
   }
 }
@@ -1064,7 +1006,12 @@ if ("mediaSession" in navigator) {
 }
 
 if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
-  window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
+  window.addEventListener("load", async () => {
+    try {
+      const registration = await navigator.serviceWorker.register("sw.js", { updateViaCache: "none" });
+      await registration.update();
+    } catch {}
+  });
 }
 
 document.addEventListener("keydown", event => {
@@ -1076,18 +1023,6 @@ document.addEventListener("keydown", event => {
   if (event.code === "Escape") closeSheet();
 });
 
-document.addEventListener("error", event => {
-  const img = event.target;
-  if (!(img instanceof HTMLImageElement)) return;
-  const fallback = img.dataset.fallbackSrc;
-  if (fallback && img.src !== fallback) {
-    img.dataset.fallbackSrc = "";
-    img.src = fallback;
-    return;
-  }
-  const parent = img.parentElement;
-  img.remove();
-  if (parent && !parent.textContent.trim()) parent.textContent = "♫";
-}, true);
+
 
 loadLibrary();
