@@ -21,6 +21,7 @@ const els = {
   brandHome: $("brandHome"),
   mobileBrandHome: $("mobileBrandHome"),
   mobileSearchBtn: $("mobileSearchBtn"),
+  mobileNotifyBtn: $("mobileNotifyBtn"),
   desktopPageTitle: $("desktopPageTitle"),
   desktopSearchInput: $("desktopSearchInput"),
 
@@ -102,6 +103,9 @@ const els = {
   sheetRepeatBtn: $("sheetRepeatBtn"),
 
   toast: $("toast"),
+  toastIcon: $("toastIcon"),
+  toastTitle: $("toastTitle"),
+  toastMessage: $("toastMessage"),
   themeColorMeta: $("themeColorMeta")
 };
 
@@ -111,20 +115,34 @@ const esc = (value = "") => String(value).replace(/[&<>"']/g, c => ({
 
 function imageMarkup(primary = "", fallback = "", alt = "") {
   const src = primary || fallback;
-  if (!src) return `<span class="local-art-symbol" aria-label="${esc(alt || "Música")}">♫</span>`;
-  return `<img src="${esc(src)}" alt="${esc(alt)}" draggable="false" decoding="async">`;
+  if (!src) return `<span class="fallback-art-symbol" aria-label="${esc(alt || "Música")}">♫</span>`;
+  return `<img src="${esc(src)}" alt="${esc(alt)}" draggable="false" decoding="async" onerror="this.hidden=true;this.nextElementSibling.hidden=false"><span class="fallback-art-symbol" hidden aria-hidden="true">♫</span>`;
 }
 
-function coverFor() {
-  return "";
+function albumArtwork(albumOrId) {
+  const album = typeof albumOrId === "string" ? albumById(albumOrId) : albumOrId;
+  return album?.artwork || {};
+}
+
+function coverFor(track) {
+  return albumArtwork(track?.albumId).cover || "";
 }
 
 function coverFallbackFor() {
   return "";
 }
 
-function albumFallbackImage() {
-  return "";
+function albumFallbackImage(album) {
+  return albumArtwork(album).cover || "";
+}
+
+function bannerFor(album) {
+  return albumArtwork(album).banner || "";
+}
+
+function trackArtistLine(track) {
+  if (!track) return "";
+  return track.remixArtist ? `${track.artist} · Remix por ${track.remixArtist}` : track.artist;
 }
 
 function fmt(seconds) {
@@ -133,11 +151,21 @@ function fmt(seconds) {
   return `${m}:${Math.floor(seconds % 60).toString().padStart(2, "0")}`;
 }
 
-function showToast(message) {
-  els.toast.textContent = message;
+function showToast(message, options = {}) {
+  if (!els.toast) return;
+  if (els.toastTitle) els.toastTitle.textContent = options.title || "Trakify";
+  if (els.toastMessage) els.toastMessage.textContent = message;
+  else els.toast.textContent = message;
+  if (els.toastIcon) els.toastIcon.innerHTML = icon(options.icon || "music", !!options.solid);
   els.toast.hidden = false;
+  els.toast.classList.remove("toast-out");
+  requestAnimationFrame(() => els.toast.classList.add("toast-in"));
   clearTimeout(showToast.timer);
-  showToast.timer = setTimeout(() => els.toast.hidden = true, 3300);
+  showToast.timer = setTimeout(() => {
+    els.toast.classList.remove("toast-in");
+    els.toast.classList.add("toast-out");
+    setTimeout(() => { els.toast.hidden = true; els.toast.classList.remove("toast-out"); }, 220);
+  }, options.duration || 3200);
 }
 
 function icon(name, solid = false) {
@@ -163,6 +191,9 @@ function flattenLibrary(data) {
           id: `${album.id}-d${discIndex + 1}-t${trackIndex + 1}`,
           albumId: album.id,
           albumTitle: album.title,
+          albumArtist: album.artist,
+          artist: track.artist || album.artist,
+          remixArtist: track.remixArtist || "",
           disc: discIndex + 1,
           discTitle: disc.title || `Disco ${discIndex + 1}`,
           trackNumber: trackIndex + 1
@@ -229,12 +260,12 @@ function renderFeatured() {
 
   els.featuredSection.innerHTML = `
     <article class="featured-card reveal-item" data-open-album="${esc(album.id)}">
-      <div class="featured-banner local-featured-art"></div>
+      <div class="featured-banner ${bannerFor(album) ? "" : "fallback-featured-art"}" ${bannerFor(album) ? `style="background-image:url('${esc(bannerFor(album))}')"` : ""}></div>
       <button class="featured-play" data-play-album="${esc(album.id)}" aria-label="Tocar ${esc(album.title)}">
         ${icon("play", true)}
       </button>
       <div class="featured-content">
-        <div class="featured-cover">${imageMarkup("", "", album.title)}</div>
+        <div class="featured-cover">${imageMarkup(albumArtwork(album).cover, "", album.title)}</div>
         <div class="featured-copy">
           <p>EM DESTAQUE</p>
           <h2>${esc(album.title)}</h2>
@@ -246,7 +277,7 @@ function renderFeatured() {
 
 function renderQuickCards() {
   const album = state.albums[0];
-  const cover = "";
+  const cover = albumArtwork(album).cover || "";
   const discs = album?.discs || [];
 
   const cards = [
@@ -294,7 +325,7 @@ function renderQuickCards() {
 function albumCard(album, i = 0) {
   return `
     <button class="album-card reveal-item" data-open-album="${esc(album.id)}" style="--delay:${i * 60}ms">
-      <span class="album-art">${imageMarkup("", "", album.title)}</span>
+      <span class="album-art">${imageMarkup(albumArtwork(album).cover, "", album.title)}</span>
       <h3>${esc(album.title)}</h3>
       <p>${esc(album.artist)}</p>
     </button>`;
@@ -315,13 +346,13 @@ function renderHomeTracks() {
     const cover = coverFor(track);
     const fallback = coverFallbackFor(track);
     return `
-      <button class="home-track reveal-item" data-play-track="${esc(track.id)}" style="--delay:${i * 42}ms">
+      <button class="home-track reveal-item ${state.currentId === track.id ? "current" : ""} ${state.currentId === track.id && state.isPlaying ? "is-playing" : ""}" data-track-card="${esc(track.id)}" data-play-track="${esc(track.id)}" style="--delay:${i * 42}ms">
         <span class="home-track-art">${imageMarkup(cover, fallback, track.albumTitle)}</span>
         <span class="home-track-copy">
           <strong>${esc(track.title)}</strong>
-          <span>${esc(track.artist)}</span>
+          <span>${esc(trackArtistLine(track))}</span>
         </span>
-        ${icon("angle-small-right")}
+        <span class="home-track-state" aria-hidden="true"><span></span><span></span><span></span></span>
       </button>`;
   }).join("");
 }
@@ -338,11 +369,11 @@ function trackRow(track, index, options = {}) {
   const liked = state.favorites.has(track.id);
   const current = state.currentId === track.id;
   return `
-    <div class="track-row reveal-item ${current ? "current" : ""}" data-track-row="${esc(track.id)}" data-play-track="${esc(track.id)}" style="--delay:${Math.min(index, 12) * 28}ms">
-      <div class="track-index" data-track-index="${esc(track.id)}" data-index-label="${options.useTrackNumber ? track.trackNumber : index + 1}">${current && state.isPlaying ? icon("play", true) : (options.useTrackNumber ? track.trackNumber : index + 1)}</div>
+    <div class="track-row reveal-item ${current ? "current" : ""} ${current && state.isPlaying ? "is-playing" : ""}" data-track-card="${esc(track.id)}" data-track-row="${esc(track.id)}" data-play-track="${esc(track.id)}" style="--delay:${Math.min(index, 12) * 28}ms">
+      <div class="track-index" data-track-index="${esc(track.id)}" data-index-label="${options.useTrackNumber ? track.trackNumber : index + 1}">${current && state.isPlaying ? '<span class="audio-bars" aria-label="Tocando"><i></i><i></i><i></i><i></i></span>' : (options.useTrackNumber ? track.trackNumber : index + 1)}</div>
       <div class="track-copy">
         <span class="track-title">${esc(track.title)}</span>
-        <span class="track-subtitle">${esc(track.artist)}${options.showAlbum ? ` · ${esc(track.albumTitle)}` : ""}</span>
+        <span class="track-subtitle">${esc(trackArtistLine(track))}${options.showAlbum ? ` · ${esc(track.albumTitle)}` : ""}</span>
       </div>
       <span class="track-duration">${esc(track.duration || "—")}</span>
       <button class="track-like ${liked ? "liked" : ""}" data-like="${esc(track.id)}" aria-label="${liked ? "Remover das curtidas" : "Curtir"}">
@@ -370,7 +401,7 @@ function renderSearchResults(query = state.query) {
 
   const result = state.tracks.filter(track => {
     if (!state.query) return true;
-    return [track.title, track.artist, track.albumTitle].some(value =>
+    return [track.title, track.artist, track.remixArtist, track.albumTitle].some(value =>
       String(value).toLowerCase().includes(state.query)
     );
   });
@@ -400,9 +431,10 @@ function renderAlbum(id) {
 
   state.currentAlbumId = id;
   const tracks = state.tracks.filter(track => track.albumId === id);
-  els.albumBanner.style.backgroundImage = "none";
-  els.albumBanner.classList.add("local-album-art");
-  els.albumCover.innerHTML = imageMarkup("", "", album.title);
+  const banner = bannerFor(album);
+  els.albumBanner.style.backgroundImage = banner ? `url("${banner}")` : "none";
+  els.albumBanner.classList.toggle("fallback-album-art", !banner);
+  els.albumCover.innerHTML = imageMarkup(albumArtwork(album).cover, "", album.title);
   els.albumTitle.textContent = album.title;
   els.albumMeta.textContent = `${album.artist} · ${tracks.length} faixas${album.subtitle ? ` · ${album.subtitle}` : ""}`;
   renderTrackList(els.albumTrackList, tracks, { discHeaders: true, useTrackNumber: true });
@@ -499,7 +531,7 @@ const audioPlayer = document.getElementById("audioPlayer");
 function setActiveSource(source) {
   activeSource = source;
   document.body.dataset.audioSource = source;
-  if (source === "local" && "audioSession" in navigator) {
+  if (source === "archive" && "audioSession" in navigator) {
     try { navigator.audioSession.type = "playback"; } catch {}
   }
 }
@@ -514,32 +546,32 @@ function resetAudio() {
 
 function playbackUnavailable(track, token, reason = "") {
   if (token !== playbackToken || currentTrack()?.id !== track.id) return;
-  console.warn("Áudio local indisponível:", reason || track.localFile || "sem arquivo");
+  console.warn("Áudio do Internet Archive indisponível:", reason || track.archiveUrl || "sem URL");
   setActiveSource("idle");
   state.isPlaying = false;
   setPlayingIcons(false);
   updateTrackRows();
   if ("mediaSession" in navigator) navigator.mediaSession.playbackState = "none";
-  showToast("Não foi possível tocar o arquivo local desta faixa.");
+  showToast("Não foi possível carregar esta faixa do Internet Archive.");
 }
 
-function playLocalTrack(track, token) {
-  if (!track?.localFile || !audioPlayer) {
-    playbackUnavailable(track, token, "faixa sem localFile");
+function playArchiveTrack(track, token) {
+  if (!track?.archiveUrl || !audioPlayer) {
+    playbackUnavailable(track, token, "faixa sem URL do Internet Archive");
     return;
   }
 
-  setActiveSource("local-loading");
-  let localUrl;
+  setActiveSource("archive-loading");
+  let archiveUrl;
   try {
-    localUrl = new URL(track.localFile, document.baseURI).href;
+    archiveUrl = new URL(track.archiveUrl).href;
   } catch {
-    playbackUnavailable(track, token, "caminho local inválido");
+    playbackUnavailable(track, token, "URL do Internet Archive inválida");
     return;
   }
 
   audioPlayer.preload = "auto";
-  audioPlayer.src = localUrl;
+  audioPlayer.src = archiveUrl;
   const playPromise = audioPlayer.play();
   if (playPromise?.catch) {
     playPromise.catch(error => {
@@ -554,17 +586,19 @@ if (audioPlayer) {
   audioPlayer.volume = Number.isFinite(saved) ? Math.max(0, Math.min(1, saved)) : .8;
 
   audioPlayer.addEventListener("playing", () => {
-    if (activeSource === "local-loading") setActiveSource("local");
-    if (activeSource !== "local") return;
+    if (activeSource === "archive-loading") setActiveSource("archive");
+    if (activeSource !== "archive") return;
     state.isPlaying = true;
     setPlayingIcons(true);
     updateTrackRows();
     startProgressTicker();
     if ("mediaSession" in navigator) navigator.mediaSession.playbackState = "playing";
+    const track = currentTrack();
+    if (track) notifyNowPlaying(track);
   });
 
   audioPlayer.addEventListener("pause", () => {
-    if (activeSource !== "local") return;
+    if (activeSource !== "archive") return;
     state.isPlaying = false;
     setPlayingIcons(false);
     updateTrackRows();
@@ -572,7 +606,7 @@ if (audioPlayer) {
   });
 
   audioPlayer.addEventListener("ended", () => {
-    if (activeSource !== "local") return;
+    if (activeSource !== "archive") return;
     if (state.repeat) {
       audioPlayer.currentTime = 0;
       audioPlayer.play().catch(() => {});
@@ -583,17 +617,17 @@ if (audioPlayer) {
 
   audioPlayer.addEventListener("error", () => {
     const track = currentTrack();
-    if (!track || !["local", "local-loading"].includes(activeSource)) return;
+    if (!track || !["archive", "archive-loading"].includes(activeSource)) return;
     let expected = "";
-    try { expected = new URL(track.localFile, document.baseURI).href; } catch {}
+    try { expected = new URL(track.archiveUrl).href; } catch {}
     if (expected && audioPlayer.currentSrc && audioPlayer.currentSrc !== expected) return;
     const code = audioPlayer.error?.code ? ` (código ${audioPlayer.error.code})` : "";
-    playbackUnavailable(track, playbackToken, `erro ao carregar o MP3 local${code}`);
+    playbackUnavailable(track, playbackToken, `erro ao carregar o MP3 do Internet Archive${code}`);
   });
 }
 
 function segmentDuration(track = currentTrack()) {
-  if (!track || !audioPlayer || !["local", "local-loading"].includes(activeSource)) return 0;
+  if (!track || !audioPlayer || !["archive", "archive-loading"].includes(activeSource)) return 0;
   return Number.isFinite(audioPlayer.duration) ? Math.max(0, audioPlayer.duration) : 0;
 }
 
@@ -604,7 +638,7 @@ function startProgressTicker() {
 
 function updatePlaybackProgress() {
   const track = currentTrack();
-  if (!track || !audioPlayer || !["local", "local-loading"].includes(activeSource)) return;
+  if (!track || !audioPlayer || !["archive", "archive-loading"].includes(activeSource)) return;
 
   const duration = segmentDuration(track);
   const current = Math.max(0, Number(audioPlayer.currentTime || 0));
@@ -639,10 +673,10 @@ function handleSegmentEnd() {
 }
 
 function playAlbum(id, disc = null) {
-  let tracks = state.tracks.filter(track => track.albumId === id && track.localFile);
+  let tracks = state.tracks.filter(track => track.albumId === id && track.archiveUrl);
   if (disc) tracks = tracks.filter(track => track.disc === Number(disc));
   if (!tracks.length) {
-    showToast("Este álbum não possui músicas locais.");
+    showToast("Este álbum não possui faixas disponíveis no Internet Archive.");
     return;
   }
   playTrack(state.shuffle ? tracks[Math.floor(Math.random() * tracks.length)].id : tracks[0].id);
@@ -652,8 +686,8 @@ async function playTrack(id) {
   const track = trackById(id);
   if (!track) return;
 
-  if (!track.localFile) {
-    showToast("Esta faixa não possui um MP3 local.");
+  if (!track.archiveUrl) {
+    showToast("Esta faixa não possui uma URL do Internet Archive.");
     return;
   }
 
@@ -672,22 +706,22 @@ async function playTrack(id) {
 
   resetAudio();
   const token = ++playbackToken;
-  playLocalTrack(track, token);
+  playArchiveTrack(track, token);
 }
 
 async function togglePlay() {
   if (!state.currentId) {
-    const first = state.tracks.find(track => track.localFile);
+    const first = state.tracks.find(track => track.archiveUrl);
     if (first) playTrack(first.id);
     return;
   }
 
-  if (activeSource === "local-loading") {
+  if (activeSource === "archive-loading") {
     showToast("Carregando a faixa…");
     return;
   }
 
-  if (activeSource === "local" && audioPlayer) {
+  if (activeSource === "archive" && audioPlayer) {
     if (audioPlayer.paused) {
       if ("audioSession" in navigator) {
         try { navigator.audioSession.type = "playback"; } catch {}
@@ -703,7 +737,7 @@ async function togglePlay() {
 }
 
 function step(direction) {
-  const list = queue().filter(track => track.localFile);
+  const list = queue().filter(track => track.archiveUrl);
   if (!list.length) return;
 
   let index = list.findIndex(track => track.id === state.currentId);
@@ -721,11 +755,17 @@ function step(direction) {
 }
 
 function updateTrackRows() {
+  document.querySelectorAll("[data-track-card]").forEach(card => {
+    const active = card.dataset.trackCard === state.currentId;
+    card.classList.toggle("current", active);
+    card.classList.toggle("is-playing", active && state.isPlaying);
+  });
   document.querySelectorAll("[data-track-row]").forEach(row => {
     const active = row.dataset.trackRow === state.currentId;
-    row.classList.toggle("current", active);
     const index = row.querySelector("[data-track-index]");
-    if (index) index.innerHTML = active && state.isPlaying ? icon("play", true) : esc(index.dataset.indexLabel || "");
+    if (index) index.innerHTML = active && state.isPlaying
+      ? '<span class="audio-bars" aria-label="Tocando"><i></i><i></i><i></i><i></i></span>'
+      : esc(index.dataset.indexLabel || "");
   });
 }
 
@@ -750,20 +790,23 @@ function updateFavoriteState() {
 }
 
 function updateNowPlaying(track) {
-  const coverHtml = imageMarkup("", "", track.albumTitle);
+  const album = albumById(track.albumId);
+  const cover = albumArtwork(album).cover || "";
+  const coverHtml = imageMarkup(cover, "", track.albumTitle);
+  const artistLine = trackArtistLine(track);
 
   els.miniPlayer.hidden = false;
   els.miniCover.innerHTML = coverHtml;
   els.miniTitle.textContent = track.title;
-  els.miniArtist.textContent = track.artist;
+  els.miniArtist.textContent = artistLine;
 
   els.nowCover.innerHTML = coverHtml;
   els.nowTitle.textContent = track.title;
-  els.nowArtist.textContent = track.artist;
+  els.nowArtist.textContent = artistLine;
 
   els.sheetCover.innerHTML = coverHtml;
   els.sheetTitle.textContent = track.title;
-  els.sheetArtist.textContent = track.artist;
+  els.sheetArtist.textContent = artistLine;
   els.sheetAlbum.textContent = track.albumTitle;
 
   document.title = `${track.title} · Trakify`;
@@ -772,10 +815,55 @@ function updateNowPlaying(track) {
   if ("mediaSession" in navigator) {
     navigator.mediaSession.metadata = new MediaMetadata({
       title: track.title,
-      artist: track.artist,
-      album: track.albumTitle
+      artist: artistLine,
+      album: track.albumTitle,
+      artwork: cover ? [{ src: new URL(cover, location.href).href }] : []
     });
   }
+}
+
+async function syncNotificationButton() {
+  if (!els.mobileNotifyBtn || !("Notification" in window)) return;
+  const granted = Notification.permission === "granted";
+  els.mobileNotifyBtn.classList.toggle("active", granted);
+  els.mobileNotifyBtn.setAttribute("aria-label", granted ? "Notificações ativadas" : "Ativar notificações");
+}
+
+async function requestNotifications() {
+  if (!("Notification" in window)) {
+    showToast("Este navegador não oferece notificações web.", { icon: "bell" });
+    return;
+  }
+  if (Notification.permission === "granted") {
+    showToast("Notificações já estão ativadas.", { icon: "bell", solid: true });
+    return;
+  }
+  if (Notification.permission === "denied") {
+    showToast("As notificações foram bloqueadas nas permissões do navegador.", { icon: "bell" });
+    return;
+  }
+  const permission = await Notification.requestPermission();
+  await syncNotificationButton();
+  showToast(permission === "granted" ? "Notificações ativadas para o Trakify." : "Notificações continuam desativadas.", { icon: "bell", solid: permission === "granted" });
+}
+
+async function notifyNowPlaying(track) {
+  if (!("Notification" in window) || Notification.permission !== "granted" || document.visibilityState === "visible") return;
+  try {
+    const reg = await navigator.serviceWorker?.ready;
+    if (!reg) return;
+    const album = albumById(track.albumId);
+    const iconUrl = albumArtwork(album).notificationIcon || albumArtwork(album).cover || "";
+    const options = {
+      body: trackArtistLine(track),
+      tag: "trakify-now-playing",
+      renotify: false,
+      silent: true,
+      data: { url: location.href }
+    };
+    if (iconUrl) options.icon = new URL(iconUrl, location.href).href;
+    await reg.showNotification(track.title, options);
+  } catch {}
 }
 
 function setPlayingIcons(playing) {
@@ -883,6 +971,7 @@ document.addEventListener("click", event => {
 els.brandHome?.addEventListener("click", () => setView("home"));
 els.mobileBrandHome.addEventListener("click", () => setView("home"));
 els.mobileSearchBtn.addEventListener("click", () => setView("search"));
+els.mobileNotifyBtn?.addEventListener("click", requestNotifications);
 els.navItems.forEach(item => item.addEventListener("click", () => setView(item.dataset.view)));
 els.seeAlbumsBtn.addEventListener("click", () => setView("albums"));
 els.seeTracksBtn.addEventListener("click", () => setView("tracks"));
@@ -948,7 +1037,7 @@ els.sheetBackdrop.addEventListener("click", closeSheet);
 
 function seekFrom(input) {
   const track=currentTrack(); if(!track) return; const duration=segmentDuration(track); if(!duration) return;
-  if (["local", "local-loading"].includes(activeSource) && audioPlayer) audioPlayer.currentTime = Number(input.value) / 1000 * duration;
+  if (["archive", "archive-loading"].includes(activeSource) && audioPlayer) audioPlayer.currentTime = Number(input.value) / 1000 * duration;
   updatePlaybackProgress();
 }
 els.seek.addEventListener("input", () => seekFrom(els.seek));
@@ -1025,4 +1114,5 @@ document.addEventListener("keydown", event => {
 
 
 
+syncNotificationButton();
 loadLibrary();

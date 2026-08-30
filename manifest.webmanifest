@@ -1,11 +1,20 @@
 {
-  "name": "Trakify",
+  "name": "Trakify Music",
   "short_name": "Trakify",
-  "description": "Biblioteca e player de música.",
+  "description": "Player mobile-first para sua biblioteca de música.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "background_color": "#0a0a0b",
   "theme_color": "#0a0a0b",
-  "orientation": "any"
+  "orientation": "portrait-primary",
+  "display_override": [
+    "standalone",
+    "minimal-ui"
+  ],
+  "categories": [
+    "music",
+    "entertainment"
+  ],
+  "prefer_related_applications": false
 }
