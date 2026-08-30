@@ -1,0 +1,35 @@
+{
+  "_instructions": [
+    "Deixe a pasta/arquivos do Google Drive como 'Qualquer pessoa com o link'.",
+    "Cole o link compartilhável da CAPA em albumCovers.graduation-ultimate-edition.",
+    "Cole o link compartilhável de cada música no ID correspondente em tracks.",
+    "O app extrai automaticamente o ID de links /file/d/ID/view, open?id=ID e uc?id=ID."
+  ],
+  "albumCovers": {
+    "graduation-ultimate-edition": ""
+  },
+  "tracks": {
+    "grad-d1-01": "",
+    "grad-d1-02": "",
+    "grad-d1-03": "",
+    "grad-d1-04": "",
+    "grad-d1-05": "",
+    "grad-d1-06": "",
+    "grad-d1-07": "",
+    "grad-d1-08": "",
+    "grad-d1-09": "",
+    "grad-d1-10": "",
+    "grad-d1-11": "",
+    "grad-d2-01": "",
+    "grad-d2-02": "",
+    "grad-d2-03": "",
+    "grad-d2-04": "",
+    "grad-d2-05": "",
+    "grad-d2-06": "",
+    "grad-d2-07": "",
+    "grad-d2-08": "",
+    "grad-d2-09": "",
+    "grad-d2-10": "",
+    "grad-d2-11": ""
+  }
+}

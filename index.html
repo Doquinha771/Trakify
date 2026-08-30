@@ -1,0 +1,331 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0a0a0b" id="themeColorMeta">
+  <meta name="description" content="Trakify — sua biblioteca de música, simples e rápida.">
+  <title>Trakify</title>
+
+  <link rel="preconnect" href="https://cdn-uicons.flaticon.com">
+  <link rel="stylesheet" href="https://cdn-uicons.flaticon.com/4.0.0/uicons-regular-rounded/css/uicons-regular-rounded.css">
+  <link rel="stylesheet" href="https://cdn-uicons.flaticon.com/4.0.0/uicons-solid-rounded/css/uicons-solid-rounded.css">
+  <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+  <div class="app-shell">
+    <aside class="desktop-sidebar" aria-label="Navegação principal">
+      <button class="brand" id="brandHome" aria-label="Ir para a página inicial">
+        <span class="brand-mark"><i class="fi fi-rr-music"></i></span>
+        <span class="brand-name">Trakify</span>
+      </button>
+
+      <nav class="side-nav">
+        <button class="nav-item active" data-view="home">
+          <i class="fi fi-rr-home"></i><span>Início</span>
+        </button>
+        <button class="nav-item" data-view="search">
+          <i class="fi fi-rr-search"></i><span>Buscar</span>
+        </button>
+        <button class="nav-item" data-view="favorites">
+          <i class="fi fi-rr-heart"></i><span>Curtidas</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-block">
+        <p>Álbuns</p>
+        <div id="albumNav" class="album-nav"></div>
+      </div>
+
+      <div class="sidebar-credit">
+        <a href="https://www.flaticon.com/uicons" target="_blank" rel="noopener noreferrer">UIcons by Flaticon</a>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="mobile-header">
+        <button class="mobile-brand" id="mobileBrandHome" aria-label="Ir para início">
+          <span class="brand-mark"><i class="fi fi-rr-music"></i></span>
+          <span>Trakify</span>
+        </button>
+        <button class="round-button" id="mobileSearchBtn" aria-label="Buscar">
+          <i class="fi fi-rr-search"></i>
+        </button>
+      </header>
+
+      <header class="desktop-topbar">
+        <div>
+          <span class="topbar-kicker">TRAKIFY</span>
+          <strong id="desktopPageTitle">Início</strong>
+        </div>
+        <label class="desktop-search">
+          <i class="fi fi-rr-search"></i>
+          <input id="desktopSearchInput" type="search" placeholder="Músicas, artistas ou álbuns" autocomplete="off">
+        </label>
+      </header>
+
+      <section id="homeView" class="view home-view">
+        <div class="welcome-row">
+          <div>
+            <p class="eyebrow">SUA BIBLIOTECA</p>
+            <h1 id="welcomeTitle">Boa noite.</h1>
+            <p>O que vai tocar agora?</p>
+          </div>
+        </div>
+
+        <section id="featuredSection" class="featured-section"></section>
+
+        <section class="home-section" id="quickSection">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">ATALHOS</p>
+              <h2>Volte para a música</h2>
+            </div>
+          </div>
+          <div id="quickGrid" class="quick-grid"></div>
+        </section>
+
+        <section class="home-section">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">COLEÇÃO</p>
+              <h2>Seus álbuns</h2>
+            </div>
+            <button class="text-button" id="seeAlbumsBtn">
+              Ver tudo <i class="fi fi-rr-angle-small-right"></i>
+            </button>
+          </div>
+          <div id="albumGrid" class="album-carousel"></div>
+        </section>
+
+        <section class="home-section">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">FAIXAS</p>
+              <h2>Para tocar agora</h2>
+            </div>
+            <button class="text-button" id="seeTracksBtn">
+              Ver tudo <i class="fi fi-rr-angle-small-right"></i>
+            </button>
+          </div>
+          <div id="homeTrackList" class="home-track-list"></div>
+        </section>
+
+        <div class="mobile-credit">
+          <a href="https://www.flaticon.com/uicons" target="_blank" rel="noopener noreferrer">UIcons by Flaticon</a>
+        </div>
+      </section>
+
+      <section id="searchView" class="view search-view" hidden>
+        <div class="page-head">
+          <p class="eyebrow">DESCOBRIR</p>
+          <h1>Buscar</h1>
+          <label class="mobile-search-field">
+            <i class="fi fi-rr-search"></i>
+            <input id="searchInput" type="search" placeholder="Música, artista ou álbum" autocomplete="off">
+            <button id="clearSearchBtn" type="button" aria-label="Limpar busca" hidden>
+              <i class="fi fi-rr-cross-small"></i>
+            </button>
+          </label>
+        </div>
+
+        <section class="content-block">
+          <div class="section-heading compact">
+            <div>
+              <h2 id="searchHeading">Sua biblioteca</h2>
+              <p id="searchCount"></p>
+            </div>
+          </div>
+          <div id="searchResults" class="track-list"></div>
+          <div id="searchEmpty" class="empty-state" hidden>
+            <i class="fi fi-rr-music-magnifying-glass"></i>
+            <strong>Nada encontrado</strong>
+            <span>Tente outro nome. A música não vai se encontrar sozinha, infelizmente.</span>
+          </div>
+        </section>
+      </section>
+
+      <section id="favoritesView" class="view library-view" hidden>
+        <div class="page-head">
+          <p class="eyebrow">BIBLIOTECA</p>
+          <h1>Músicas curtidas</h1>
+          <p id="favoriteCount"></p>
+        </div>
+        <section class="content-block">
+          <div id="favoriteList" class="track-list"></div>
+          <div id="favoritesEmpty" class="empty-state" hidden>
+            <i class="fi fi-rr-heart"></i>
+            <strong>Nenhuma curtida ainda</strong>
+            <span>Toque no coração de uma faixa para guardar aqui.</span>
+          </div>
+        </section>
+      </section>
+
+      <section id="albumsView" class="view albums-view" hidden>
+        <div class="page-head">
+          <p class="eyebrow">COLEÇÃO</p>
+          <h1>Álbuns</h1>
+          <p id="albumsPageCount"></p>
+        </div>
+        <section class="content-block">
+          <div id="albumsPageGrid" class="album-page-grid"></div>
+        </section>
+      </section>
+
+      <section id="tracksView" class="view tracks-view" hidden>
+        <div class="page-head">
+          <p class="eyebrow">BIBLIOTECA</p>
+          <h1>Todas as músicas</h1>
+          <p id="allTracksCount"></p>
+        </div>
+        <section class="content-block">
+          <div id="allTrackList" class="track-list"></div>
+        </section>
+      </section>
+
+      <section id="albumView" class="view album-view" hidden>
+        <section class="album-banner-shell">
+          <div id="albumBanner" class="album-banner"></div>
+          <div class="album-banner-shade"></div>
+
+          <button id="albumBackBtn" class="floating-button back-button" aria-label="Voltar">
+            <i class="fi fi-rr-angle-small-left"></i>
+          </button>
+
+          <div class="album-banner-content">
+            <div id="albumCover" class="album-cover">♫</div>
+            <div class="album-copy">
+              <p class="eyebrow">ÁLBUM</p>
+              <h1 id="albumTitle"></h1>
+              <p id="albumMeta"></p>
+              <div class="album-actions">
+                <button id="albumPlayBtn" class="album-play-button">
+                  <i class="fi fi-sr-play"></i><span>Tocar</span>
+                </button>
+                <button id="albumShuffleBtn" class="round-button strong" aria-label="Aleatório">
+                  <i class="fi fi-rr-shuffle"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="album-body content-block">
+          <div class="album-list-head">
+            <span>#</span><span>Faixa</span><span><i class="fi fi-rr-clock"></i></span>
+          </div>
+          <div id="albumTrackList" class="track-list album-track-list"></div>
+        </section>
+      </section>
+    </main>
+  </div>
+
+  <section id="miniPlayer" class="mini-player" hidden>
+    <button class="mini-player-open" id="miniPlayerOpen" aria-label="Abrir player">
+      <div id="miniCover" class="mini-cover">♫</div>
+      <div class="mini-copy">
+        <strong id="miniTitle">Nada tocando</strong>
+        <span id="miniArtist"></span>
+      </div>
+    </button>
+    <button id="miniFavoriteBtn" class="player-icon-button" aria-label="Curtir">
+      <i class="fi fi-rr-heart"></i>
+    </button>
+    <button id="miniPlayBtn" class="mini-play-button" aria-label="Reproduzir">
+      <i class="fi fi-sr-play"></i>
+    </button>
+    <div id="miniProgress" class="mini-progress"></div>
+  </section>
+
+  <footer class="desktop-player" id="desktopPlayer">
+    <div class="now-playing">
+      <div id="nowCover" class="desktop-player-cover">♫</div>
+      <div class="now-copy">
+        <strong id="nowTitle">Nada tocando</strong>
+        <span id="nowArtist">Escolha uma faixa</span>
+      </div>
+      <button id="favoriteNowBtn" class="player-icon-button" aria-label="Curtir">
+        <i class="fi fi-rr-heart"></i>
+      </button>
+    </div>
+
+    <div class="desktop-transport">
+      <div class="transport-buttons">
+        <button id="shuffleBtn" class="player-icon-button small" aria-label="Aleatório"><i class="fi fi-rr-shuffle"></i></button>
+        <button id="prevBtn" class="player-icon-button" aria-label="Anterior"><i class="fi fi-rr-angle-small-left"></i></button>
+        <button id="playBtn" class="desktop-play-button" aria-label="Reproduzir"><i class="fi fi-sr-play"></i></button>
+        <button id="nextBtn" class="player-icon-button" aria-label="Próxima"><i class="fi fi-rr-angle-small-right"></i></button>
+        <button id="repeatBtn" class="player-icon-button small" aria-label="Repetir"><i class="fi fi-rr-refresh"></i></button>
+      </div>
+      <div class="timeline">
+        <span id="currentTime">0:00</span>
+        <input id="seek" type="range" min="0" max="1000" value="0" aria-label="Progresso">
+        <span id="duration">0:00</span>
+      </div>
+    </div>
+
+    <div class="volume-wrap">
+      <i class="fi fi-rr-volume"></i>
+      <input id="volume" type="range" min="0" max="1" value="0.8" step="0.01" aria-label="Volume">
+    </div>
+  </footer>
+
+  <nav class="mobile-nav" aria-label="Navegação inferior">
+    <button class="mobile-nav-item active" data-view="home">
+      <i class="fi fi-rr-home"></i><span>Início</span>
+    </button>
+    <button class="mobile-nav-item" data-view="search">
+      <i class="fi fi-rr-search"></i><span>Buscar</span>
+    </button>
+    <button class="mobile-nav-item" data-view="favorites">
+      <i class="fi fi-rr-heart"></i><span>Curtidas</span>
+    </button>
+  </nav>
+
+  <section id="nowPlayingSheet" class="now-playing-sheet" aria-hidden="true">
+    <div class="sheet-backdrop" id="sheetBackdrop"></div>
+    <div class="sheet-card">
+      <div class="sheet-handle"></div>
+      <header class="sheet-header">
+        <button id="closeSheetBtn" class="round-button" aria-label="Fechar player">
+          <i class="fi fi-rr-angle-small-down"></i>
+        </button>
+        <div>
+          <span>TOCANDO AGORA</span>
+          <strong id="sheetAlbum">Trakify</strong>
+        </div>
+        <button id="sheetFavoriteBtn" class="round-button" aria-label="Curtir">
+          <i class="fi fi-rr-heart"></i>
+        </button>
+      </header>
+
+      <div id="sheetCover" class="sheet-cover">♫</div>
+
+      <div class="sheet-track-info">
+        <div>
+          <strong id="sheetTitle">Nada tocando</strong>
+          <span id="sheetArtist"></span>
+        </div>
+      </div>
+
+      <div class="sheet-seek">
+        <input id="sheetSeek" type="range" min="0" max="1000" value="0" aria-label="Progresso">
+        <div><span id="sheetCurrentTime">0:00</span><span id="sheetDuration">0:00</span></div>
+      </div>
+
+      <div class="sheet-controls">
+        <button id="sheetShuffleBtn" class="sheet-side-button" aria-label="Aleatório"><i class="fi fi-rr-shuffle"></i></button>
+        <button id="sheetPrevBtn" class="sheet-skip-button" aria-label="Anterior"><i class="fi fi-rr-angle-small-left"></i></button>
+        <button id="sheetPlayBtn" class="sheet-play-button" aria-label="Reproduzir"><i class="fi fi-sr-play"></i></button>
+        <button id="sheetNextBtn" class="sheet-skip-button" aria-label="Próxima"><i class="fi fi-rr-angle-small-right"></i></button>
+        <button id="sheetRepeatBtn" class="sheet-side-button" aria-label="Repetir"><i class="fi fi-rr-refresh"></i></button>
+      </div>
+    </div>
+  </section>
+
+  <div id="toast" class="toast" hidden></div>
+  <audio id="audio" preload="metadata"></audio>
+  <script src="app.js" defer></script>
+</body>
+</html>
